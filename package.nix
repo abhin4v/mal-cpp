@@ -4,7 +4,7 @@
 , pkg-config
 , spdlog
 , abseil-cpp
-, readline
+, linenoise
 }:
 
 stdenv.mkDerivation {
@@ -16,7 +16,7 @@ stdenv.mkDerivation {
   ];
 
   nativeBuildInputs = [ cmake pkg-config ];
-  buildInputs = [ spdlog abseil-cpp readline ];
+  buildInputs = [ spdlog abseil-cpp linenoise ];
   checkInputs = [ ];
 
   doCheck = false;

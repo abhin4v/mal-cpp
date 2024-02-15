@@ -1,2 +1,2 @@
 #!/bin/bash
-exec $(dirname $0)/build/${STEP:-stepA_mal} "${@}"
+just _run ${STEP:-stepA_mal} "${@}"

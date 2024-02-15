@@ -1,6 +1,7 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include "linenoise.h"
 
 std::string READ(const std::string& input) {
   return input;
@@ -18,13 +19,24 @@ std::string rep(const std::string& input) {
   return PRINT(EVAL(READ(input)));
 }
 
-int main() {
-  std::string input;
+static const auto HISTORY_FILE = ".repl_history";
 
-  std::cout << "user> ";
-  while(std::getline(std::cin, input)) {
-    auto output = rep(input);
+int main() {
+  linenoiseHistoryLoad(HISTORY_FILE);
+  linenoiseHistorySetMaxLen(1000);
+
+  while (1) {
+    auto line = linenoise("user> ");
+    if (line == nullptr) {
+      break;
+    }
+
+    linenoiseHistoryAdd(line); /* Add to the history. */
+    linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
+
+    auto output = rep(std::string(line));
     std::cout << output << std::endl;
-    std::cout << "user> ";
+
+    linenoiseFree(line);
   }
 }
