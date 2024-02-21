@@ -59,3 +59,11 @@ run target *args: (build target) (_run target args)
 # tests a target
 test target:
   cd ../.. && make test^cpp^{{replace_regex(target, '_.+', '')}}
+
+@lint:
+  echo "============================= FLAWFINDER =============================="
+  flawfinder -m0 src/*
+  echo "=============================  CPPCHECK  ============================="
+  cppcheck --enable=all --disable=missingInclude --inconclusive src/*
+  echo "============================= CLANG-TIDY ============================="
+  clang-tidy -p compile_commands.json src/*
