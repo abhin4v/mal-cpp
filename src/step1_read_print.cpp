@@ -9,7 +9,7 @@ std::vector<Token> EVAL(const std::vector<Token> &ast) { return ast; }
 
 std::string PRINT(const std::vector<Token> &value) {
   std::stringstream buffer;
-  for (auto token : value) {
+  for (auto const &token : value) {
     buffer << "Token<" << tokenTypeName(token.type) << " " << token.lexeme
            << ">" << std::endl;
   }
@@ -19,13 +19,14 @@ std::string PRINT(const std::vector<Token> &value) {
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
 
 static const auto HISTORY_FILE = ".repl_history";
+static const auto HISTORY_MAX_LEN = 1000;
 
 int main() {
   linenoiseHistoryLoad(HISTORY_FILE);
-  linenoiseHistorySetMaxLen(1000);
+  linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
-  while (1) {
-    auto line = linenoise("user> ");
+  while (true) {
+    auto *line = linenoise("user> ");
     if (line == nullptr) {
       break;
     }

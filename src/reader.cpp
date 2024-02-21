@@ -5,16 +5,16 @@ static constexpr std::array<const char *, 16> TOKEN_TYPE_NAMES = {
     "{",  "}", "'", "`",  "^", "COMMENT", "ATOM", "STRING"};
 
 const char *tokenTypeName(TokenType tokenType) {
-  return (char *)TOKEN_TYPE_NAMES[static_cast<int>(tokenType)];
+  return const_cast<char *>(TOKEN_TYPE_NAMES.at(static_cast<int>(tokenType)));
 }
 
 std::vector<Token> Tokenizer::tokenize() {
   while (!eof()) {
-    auto c = peek().value();
+    auto chr = peek().value();
     // std::cerr << "Prev token = " << tokenTypeName(prevTokenType)
     //           << ", current str = \"" << buffer << "\", char = \'" << c <<
     //           "\'" << std::endl;
-    switch (c) {
+    switch (chr) {
     case '\n':
     case '\r':
     case ',':
@@ -23,13 +23,13 @@ std::vector<Token> Tokenizer::tokenize() {
       advance();
       switch (prevTokenType) {
       case TokenType::COMMENT:
-        if (c == '\n' || c == '\r') {
+        if (chr == '\n' || chr == '\r') {
           addTokenFromBuffer(TokenType::COMMENT);
           prevTokenType = TokenType::UNDEFINED;
           break;
         }
       case TokenType::STRING:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       case TokenType::ATOM:
         addTokenFromBuffer(TokenType::ATOM);
@@ -65,17 +65,17 @@ std::vector<Token> Tokenizer::tokenize() {
       switch (prevTokenType) {
       case TokenType::COMMENT:
       case TokenType::STRING:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       case TokenType::ATOM:
-        if (c == '~' || c == '@' || c == '^') {
-          bufferChar(c);
+        if (chr == '~' || chr == '@' || chr == '^') {
+          bufferChar(chr);
           break;
         }
         addTokenFromBuffer(TokenType::ATOM);
       default:
-        auto tokenType = charTokenType(c);
-        addToken(tokenType, std::string(1, c));
+        auto tokenType = charTokenType(chr);
+        addToken(tokenType, std::string(1, chr));
         prevTokenType = tokenType;
         break;
       }
@@ -85,7 +85,7 @@ std::vector<Token> Tokenizer::tokenize() {
       switch (prevTokenType) {
       case TokenType::COMMENT:
       case TokenType::STRING:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       case TokenType::ATOM:
         addTokenFromBuffer(TokenType::ATOM);
@@ -104,17 +104,17 @@ std::vector<Token> Tokenizer::tokenize() {
           advance();
           bufferChar('"');
         } else {
-          bufferChar(c);
+          bufferChar(chr);
         }
         break;
       }
       case TokenType::ATOM:
       case TokenType::COMMENT:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       default:
         assertEmptyBuffer();
-        bufferChar(c);
+        bufferChar(chr);
         prevTokenType = TokenType::ATOM;
         break;
       }
@@ -123,7 +123,7 @@ std::vector<Token> Tokenizer::tokenize() {
       advance();
       switch (prevTokenType) {
       case TokenType::COMMENT:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       case TokenType::STRING:
         addTokenFromBuffer(TokenType::STRING);
@@ -145,11 +145,11 @@ std::vector<Token> Tokenizer::tokenize() {
       case TokenType::COMMENT:
       case TokenType::STRING:
       case TokenType::ATOM:
-        bufferChar(c);
+        bufferChar(chr);
         break;
       default:
         assertEmptyBuffer();
-        bufferChar(c);
+        bufferChar(chr);
         prevTokenType = TokenType::ATOM;
         break;
       }
