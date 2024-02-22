@@ -84,6 +84,15 @@ private:
         auto num = parseUnsignedInteger(lexeme.substr(1));
         return std::make_shared<Expr>(Int{-num});
       }
+      if (lexeme == "nil") {
+        return std::make_shared<Expr>(Nil::NIL);
+      }
+      if (lexeme == "true") {
+        return std::make_shared<Expr>(Bool::TRUE);
+      }
+      if (lexeme == "false") {
+        return std::make_shared<Expr>(Bool::FALSE);
+      }
       return std::make_shared<Expr>(Symbol{lexeme});
     }
     default:

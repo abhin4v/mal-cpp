@@ -12,14 +12,28 @@ private:
 public:
   explicit Printer(bool printReadably) : printReadably(printReadably) {}
 
+  std::string operator()(const Nil & /*nil*/) const { return "nil"; }
+
+  std::string operator()(const Int &num) const {
+    return std::to_string(num.value);
+  }
+
+  std::string operator()(const Bool &boolean) const {
+    switch (boolean) {
+    case Bool::TRUE:
+      return "true";
+    case Bool::FALSE:
+      return "false";
+    }
+  }
+
   std::string operator()(const String &str) const {
     return '"' + (printReadably ? escapeCharacters(str.value) : str.value) +
            '"';
   }
-  std::string operator()(const Int &num) const {
-    return std::to_string(num.value);
-  }
+
   std::string operator()(const Symbol &str) const { return str.value; }
+
   std::string operator()(const List &list) const {
     std::stringstream buffer;
     buffer << "(";
