@@ -1,7 +1,5 @@
 #include "reader.hpp"
 #include "tokenizer.hpp"
-// #include <iostream>
-// #include <ostream>
 
 namespace {
 std::vector<Token> removeComments(const std::vector<Token> &tokens) {
@@ -18,9 +16,6 @@ std::vector<Token> removeComments(const std::vector<Token> &tokens) {
 
 ExprPtr readStr(const std::string &input) {
   auto tokens = removeComments(tokenize(input));
-  // for (auto token : tokens) {
-  //   std::cerr << token.toString() << std::endl;
-  // }
   if (tokens.empty()) {
     return std::make_shared<Expr>(Nil::NIL);
   }

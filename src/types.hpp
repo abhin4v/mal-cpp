@@ -41,9 +41,11 @@ struct SpliceUnquote;
 
 struct Deref;
 
+struct MetaData;
+
 using Expr =
     std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector, HashMap,
-                 Quote, QuasiQuote, Unquote, SpliceUnquote, Deref>;
+                 Quote, QuasiQuote, Unquote, SpliceUnquote, Deref, MetaData>;
 
 using ExprPtr = std::shared_ptr<Expr>;
 
@@ -76,5 +78,10 @@ struct SpliceUnquote {
 };
 
 struct Deref {
+  ExprPtr value;
+};
+
+struct MetaData {
+  ExprPtr meta;
   ExprPtr value;
 };

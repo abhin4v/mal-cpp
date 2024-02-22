@@ -72,6 +72,11 @@ public:
     return "(deref " + prExprPtr(expr.value) + ")";
   }
 
+  std::string operator()(const MetaData &expr) const {
+    return "(with-meta " + prExprPtr(expr.value) + " " + prExprPtr(expr.meta) +
+           ")";
+  }
+
 private:
   static std::string escapeCharacters(const std::string &input) {
     std::string output;

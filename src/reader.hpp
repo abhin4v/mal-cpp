@@ -74,6 +74,11 @@ public:
         return std::make_shared<Expr>(Deref{readForm()});
       }
 
+      case TokenType::CARET: {
+        advance();
+        return std::make_shared<Expr>(MetaData{readForm(), readForm()});
+      }
+
       default:
         return readAtom();
       }
