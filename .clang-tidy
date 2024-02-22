@@ -1,6 +1,7 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,*,-llvmlibc-implementation-in-namespace,-llvmlibc-callee-namespace,-modernize-use-trailing-return-type,-llvm-header-guard,-llvmlibc-restrict-system-libc-headers,-fuchsia-default-arguments-declarations,-fuchsia-default-arguments-calls,-cppcoreguidelines-pro-type-const-cast,-altera-unroll-loops,-misc-non-private-member-variables-in-classes'
-WarningsAsErrors: '*'
-HeaderFilterRegex: '^(/nix/*)'
-FormatStyle:     none
-User:            abhinav
+Checks: "clang-diagnostic-*,clang-analyzer-*,*, -altera-struct-pack-align, -altera-unroll-loops, -cppcoreguidelines-pro-type-const-cast, -fuchsia-default-arguments-calls, -fuchsia-default-arguments-declarations, -fuchsia-overloaded-operator, -llvm-header-guard, -llvmlibc-callee-namespace, -llvmlibc-implementation-in-namespace, -llvmlibc-restrict-system-libc-headers, -misc-non-private-member-variables-in-classes, -misc-no-recursion, -modernize-use-trailing-return-type"
+
+WarningsAsErrors: "*"
+HeaderFilterRegex: "^(/nix/*)"
+FormatStyle: none
+User: abhinav

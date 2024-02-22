@@ -1,19 +1,16 @@
 #include "linenoise.h"
-#include "tokenizer.hpp"
+#include "printer.hpp"
+#include "reader.hpp"
 #include <iostream>
+#include <ostream>
 #include <sstream>
 
-std::vector<Token> READ(const std::string &input) { return tokenize(input); }
+std::shared_ptr<Expr> READ(const std::string &input) { return readStr(input); }
 
-std::vector<Token> EVAL(const std::vector<Token> &ast) { return ast; }
+std::shared_ptr<Expr> EVAL(const std::shared_ptr<Expr> &ast) { return ast; }
 
-std::string PRINT(const std::vector<Token> &value) {
-  std::stringstream buffer;
-  for (auto const &token : value) {
-    buffer << "Token<" << tokenTypeName(token.type) << " " << token.lexeme
-           << ">" << std::endl;
-  }
-  return buffer.str();
+std::string PRINT(const std::shared_ptr<Expr> &value) {
+  return prStr(value, true);
 }
 
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
@@ -34,8 +31,12 @@ int main() {
     linenoiseHistoryAdd(line);          /* Add to the history. */
     linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
 
-    auto output = rep(std::string(line));
-    std::cout << output << std::endl;
+    try {
+      auto output = rep(std::string(line));
+      std::cout << output << std::endl;
+    } catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
 
     linenoiseFree(line);
   }

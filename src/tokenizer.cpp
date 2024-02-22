@@ -11,9 +11,6 @@ const char *tokenTypeName(TokenType tokenType) {
 std::vector<Token> Tokenizer::tokenize() {
   while (!eof()) {
     auto chr = peek().value(); // NOLINT(bugprone-unchecked-optional-access)
-    // std::cerr << "Prev token = " << tokenTypeName(prevTokenType)
-    //           << ", current str = \"" << buffer << "\", char = \'" << c <<
-    //           "\'" << std::endl;
     switch (chr) {
     case '\n':
     case '\r':
@@ -86,12 +83,12 @@ std::vector<Token> Tokenizer::tokenize() {
       addTokenFromBuffer(prevTokenType);
       break;
     case TokenType::STRING:
-      throw std::runtime_error("Unclosed string");
+      throw std::runtime_error("unbalanced string");
     default:
-      throw std::runtime_error("Leftover input");
+      throw std::runtime_error("leftover input");
     }
   } else if (prevTokenType == TokenType::STRING) {
-    throw std::runtime_error("Unclosed string");
+    throw std::runtime_error("unbalanced string");
   }
 
   return tokens;
@@ -155,9 +152,16 @@ void Tokenizer::tokenizeEscape(char chr) {
   switch (prevTokenType) {
   case TokenType::STRING: {
     auto next = peek();
-    if (next.has_value() && next.value() == '"') {
-      advance();
-      bufferChar('"');
+    if (next.has_value()) {
+      auto val = next.value();
+      if (val == '"' || val == '\\') {
+        advance();
+        bufferChar(val);
+      }
+      if (val == 'n') {
+        advance();
+        bufferChar('\n');
+      }
     } else {
       bufferChar(chr);
     }

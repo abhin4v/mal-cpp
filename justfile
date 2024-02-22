@@ -38,7 +38,7 @@ gen-mini-compile-commands:
   kill -s SIGINT $pid
 
 _build target *flags:
-  cmake --build {{BUILD_DIR}} --target {{target}} {{flags}}
+  cmake --build {{BUILD_DIR}} --target {{target}} {{flags}} --parallel
 
 # builds a target
 build target *flags: (configure "Debug") (_build target flags)

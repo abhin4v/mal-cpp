@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -23,13 +24,28 @@ enum class TokenType {
   STRING,
 };
 
+const char *tokenTypeName(TokenType tokenType);
+
 struct Token {
   TokenType type;
   std::string lexeme;
   Token(TokenType type, const std::string &lexeme)
       : type(type), lexeme(lexeme) {}
+
+  [[nodiscard]] std::string toString() const {
+    std::stringstream buffer;
+    buffer << "Token<" << tokenTypeName(type) << " " << lexeme << ">";
+    return buffer.str();
+  }
+
+  bool operator==(const Token &other) const {
+    return type == other.type && lexeme == other.lexeme;
+  }
+
+  bool operator!=(const Token &other) const {
+    return !(this->operator==(other));
+  }
 };
-const char *tokenTypeName(TokenType tokenType);
 
 class Tokenizer {
 private:
