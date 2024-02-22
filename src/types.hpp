@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 enum class Nil { NIL };
@@ -20,10 +21,29 @@ struct Symbol {
   std::string value;
 };
 
+struct Keyword {
+  std::string value;
+};
+
 struct List;
 
-using Expr = std::variant<Nil, Int, Bool, String, Symbol, List>;
+struct Vector;
+
+struct HashMap;
+
+using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
+                          HashMap>;
+
+using ExprPtr = std::shared_ptr<Expr>;
 
 struct List {
-  std::vector<std::shared_ptr<Expr>> value{};
+  std::vector<ExprPtr> value{};
+};
+
+struct Vector {
+  std::vector<ExprPtr> value{};
+};
+
+struct HashMap {
+  std::unordered_map<ExprPtr, ExprPtr> value{};
 };

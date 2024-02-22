@@ -5,13 +5,11 @@
 #include <ostream>
 #include <sstream>
 
-std::shared_ptr<Expr> READ(const std::string &input) { return readStr(input); }
+ExprPtr READ(const std::string &input) { return readStr(input); }
 
-std::shared_ptr<Expr> EVAL(const std::shared_ptr<Expr> &ast) { return ast; }
+ExprPtr EVAL(const ExprPtr &ast) { return ast; }
 
-std::string PRINT(const std::shared_ptr<Expr> &value) {
-  return prStr(value, true);
-}
+std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
 
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
 

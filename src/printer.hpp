@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <variant>
+#include <vector>
 
 class Printer {
 private:
@@ -32,24 +33,23 @@ public:
            '"';
   }
 
-  std::string operator()(const Symbol &str) const { return str.value; }
+  std::string operator()(const Symbol &sym) const { return sym.value; }
+
+  std::string operator()(const Keyword &kwd) const { return ':' + kwd.value; }
 
   std::string operator()(const List &list) const {
-    std::stringstream buffer;
-    buffer << "(";
-    for (const auto &elementPtr : list.value) {
-      auto *element = elementPtr.get();
-      buffer << std::visit(*this, *element) << " ";
-    }
+    return prListLike(list.value, '(', ')');
+  }
 
-    if (list.value.empty()) {
-      buffer << ")";
-      return buffer.str();
-    }
+  std::string operator()(const Vector &vector) const {
+    return prListLike(vector.value, '[', ']');
+  }
 
-    auto ret = buffer.str();
-    ret[ret.size() - 1] = ')';
-    return ret;
+  std::string operator()(const HashMap &vector) const {
+    return prListLike(
+        flattenKeyValuePairs(std::vector<std::pair<ExprPtr, ExprPtr>>(
+            vector.value.begin(), vector.value.end())),
+        '{', '}');
   }
 
 private:
@@ -75,6 +75,36 @@ private:
 
     return output;
   }
+
+  [[nodiscard]] std::string prListLike(const std::vector<ExprPtr> &elements,
+                                       char startDelim, char endDelim) const {
+    std::stringstream buffer;
+    buffer << startDelim;
+    for (const auto &elementPtr : elements) {
+      auto *element = elementPtr.get();
+      buffer << std::visit(*this, *element) << " ";
+    }
+
+    if (elements.empty()) {
+      buffer << endDelim;
+      return buffer.str();
+    }
+
+    auto ret = buffer.str();
+    ret[ret.size() - 1] = endDelim;
+    return ret;
+  }
+
+  static std::vector<ExprPtr>
+  flattenKeyValuePairs(const std::vector<std::pair<ExprPtr, ExprPtr>> &pairs) {
+    std::vector<ExprPtr> vec;
+    vec.reserve(pairs.size() * 2);
+    for (const auto &pair : pairs) {
+      vec.push_back(pair.first);
+      vec.push_back(pair.second);
+    }
+    return vec;
+  }
 };
 
-std::string prStr(const std::shared_ptr<Expr> &expr, bool printReadably);
+std::string prStr(const ExprPtr &expr, bool printReadably);

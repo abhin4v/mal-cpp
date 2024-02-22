@@ -5,6 +5,7 @@
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 class Reader {
@@ -18,14 +19,37 @@ public:
 
   bool eof() { return !peek().has_value(); }
 
-  std::shared_ptr<Expr> readForm() {
+  ExprPtr readForm() {
     auto oToken = peek();
 
     if (oToken.has_value()) {
       auto token = oToken.value();
       switch (token.type) {
       case TokenType::LEFT_PAREN:
-        return readList();
+        return std::make_shared<Expr>(
+            List{readList(token, TokenType::RIGHT_PAREN)});
+
+      case TokenType::LEFT_BRACKET:
+        return std::make_shared<Expr>(
+            Vector{readList(token, TokenType::RIGHT_BRACKET)});
+
+      case TokenType::LEFT_BRACE: {
+        auto elements = readList(token, TokenType::RIGHT_BRACE);
+        auto elementCount = elements.size();
+        if (elementCount % 2 != 0) {
+          throw std::runtime_error("odd number of elements in hash-map");
+        }
+
+        std::unordered_map<ExprPtr, ExprPtr> map;
+        map.reserve(elementCount / 2);
+
+        for (auto i = 0; i < elementCount; i += 2) {
+          map[elements[i]] = elements[i + 1];
+        }
+
+        return std::make_shared<Expr>(HashMap{map});
+      }
+
       default:
         return readAtom();
       }
@@ -46,30 +70,30 @@ private:
     return tokensSansComments;
   }
 
-  std::shared_ptr<Expr> readList() {
-    expect(Token{TokenType::LEFT_PAREN, "("});
-    std::vector<std::shared_ptr<Expr>> elements;
+  std::vector<ExprPtr> readList(const Token &startDelimToken,
+                                TokenType endDelimTokenType) {
+    expect(startDelimToken);
+    std::vector<ExprPtr> elements;
 
     while (true) {
       auto oToken = peek();
       if (oToken.has_value()) {
         auto token = oToken.value();
-        switch (token.type) {
-        case TokenType::RIGHT_PAREN:
+        if (token.type == endDelimTokenType) {
           advance();
-          return std::make_shared<Expr>(List{elements});
-        default:
-          auto expr = readForm();
-          elements.push_back(expr);
-          continue;
+          return elements;
         }
+
+        auto expr = readForm();
+        elements.push_back(expr);
+        continue;
       }
 
-      throw std::runtime_error("unbalanced parens");
+      throw std::runtime_error("unbalanced delimiters");
     }
   }
 
-  std::shared_ptr<Expr> readAtom() {
+  ExprPtr readAtom() {
     auto token = advance();
     auto lexeme = token.lexeme;
     switch (token.type) {
@@ -92,6 +116,9 @@ private:
       }
       if (lexeme == "false") {
         return std::make_shared<Expr>(Bool::FALSE);
+      }
+      if (chr == ':') {
+        return std::make_shared<Expr>(Keyword{lexeme.substr(1)});
       }
       return std::make_shared<Expr>(Symbol{lexeme});
     }
@@ -145,4 +172,4 @@ private:
   static const int DECIMAL_BASE = 10;
 };
 
-std::shared_ptr<Expr> readStr(const std::string &input);
+ExprPtr readStr(const std::string &input);
