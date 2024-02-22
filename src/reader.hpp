@@ -14,8 +14,7 @@ private:
   int position{0};
 
 public:
-  explicit Reader(const std::vector<Token> &tokens)
-      : tokens(removeComments(tokens)) {}
+  explicit Reader(const std::vector<Token> &tokens) : tokens(tokens) {}
 
   bool eof() { return !peek().has_value(); }
 
@@ -59,17 +58,6 @@ public:
   }
 
 private:
-  static std::vector<Token> removeComments(const std::vector<Token> &tokens) {
-    std::vector<Token> tokensSansComments;
-    tokensSansComments.reserve(tokens.size());
-
-    std::copy_if(tokens.begin(), tokens.end(),
-                 std::back_inserter(tokensSansComments),
-                 [](auto token) { return token.type != TokenType::COMMENT; });
-
-    return tokensSansComments;
-  }
-
   std::vector<ExprPtr> readList(const Token &startDelimToken,
                                 TokenType endDelimTokenType) {
     expect(startDelimToken);
