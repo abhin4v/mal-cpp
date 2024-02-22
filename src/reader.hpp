@@ -45,6 +45,16 @@ public:
   std::vector<Token> tokenize();
 
 private:
+  void tokenizeWhitespace(char chr);
+
+  void tokenizeSpecialChar(char chr);
+
+  void tokenizeComment(char chr);
+
+  void tokenizeEscape(char chr);
+
+  void tokenizeString(char chr);
+
   std::optional<char> peek(int offset = 0) {
     if (position + offset >= input.size()) {
       return std::nullopt;
