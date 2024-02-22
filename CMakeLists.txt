@@ -17,5 +17,5 @@ find_package(absl REQUIRED)
 add_executable(step0_repl src/step0_repl.cpp)
 target_link_libraries(step0_repl PRIVATE absl::time spdlog::spdlog ${LINENOISE_LIBRARIES})
 
-add_executable(step1_read_print src/step1_read_print.cpp src/reader.cpp)
+add_executable(step1_read_print src/step1_read_print.cpp src/tokenizer.cpp)
 target_link_libraries(step1_read_print PRIVATE absl::time spdlog::spdlog ${LINENOISE_LIBRARIES})
