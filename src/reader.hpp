@@ -49,6 +49,31 @@ public:
         return std::make_shared<Expr>(HashMap{map});
       }
 
+      case TokenType::QUOTE: {
+        advance();
+        return std::make_shared<Expr>(Quote{readForm()});
+      }
+
+      case TokenType::BACKQUOTE: {
+        advance();
+        return std::make_shared<Expr>(QuasiQuote{readForm()});
+      }
+
+      case TokenType::TILDE: {
+        advance();
+        return std::make_shared<Expr>(Unquote{readForm()});
+      }
+
+      case TokenType::TILDE_AT: {
+        advance();
+        return std::make_shared<Expr>(SpliceUnquote{readForm()});
+      }
+
+      case TokenType::AT: {
+        advance();
+        return std::make_shared<Expr>(Deref{readForm()});
+      }
+
       default:
         return readAtom();
       }

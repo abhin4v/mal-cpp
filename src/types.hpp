@@ -31,8 +31,19 @@ struct Vector;
 
 struct HashMap;
 
-using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
-                          HashMap>;
+struct Quote;
+
+struct QuasiQuote;
+
+struct Unquote;
+
+struct SpliceUnquote;
+
+struct Deref;
+
+using Expr =
+    std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector, HashMap,
+                 Quote, QuasiQuote, Unquote, SpliceUnquote, Deref>;
 
 using ExprPtr = std::shared_ptr<Expr>;
 
@@ -46,4 +57,24 @@ struct Vector {
 
 struct HashMap {
   std::unordered_map<ExprPtr, ExprPtr> value{};
+};
+
+struct Quote {
+  ExprPtr value;
+};
+
+struct QuasiQuote {
+  ExprPtr value;
+};
+
+struct Unquote {
+  ExprPtr value;
+};
+
+struct SpliceUnquote {
+  ExprPtr value;
+};
+
+struct Deref {
+  ExprPtr value;
 };

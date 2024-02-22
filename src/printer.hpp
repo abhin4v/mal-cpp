@@ -52,6 +52,26 @@ public:
         '{', '}');
   }
 
+  std::string operator()(const Quote &expr) const {
+    return "(quote " + prExprPtr(expr.value) + ")";
+  }
+
+  std::string operator()(const QuasiQuote &expr) const {
+    return "(quasiquote " + prExprPtr(expr.value) + ")";
+  }
+
+  std::string operator()(const Unquote &expr) const {
+    return "(unquote " + prExprPtr(expr.value) + ")";
+  }
+
+  std::string operator()(const SpliceUnquote &expr) const {
+    return "(splice-unquote " + prExprPtr(expr.value) + ")";
+  }
+
+  std::string operator()(const Deref &expr) const {
+    return "(deref " + prExprPtr(expr.value) + ")";
+  }
+
 private:
   static std::string escapeCharacters(const std::string &input) {
     std::string output;
@@ -81,8 +101,7 @@ private:
     std::stringstream buffer;
     buffer << startDelim;
     for (const auto &elementPtr : elements) {
-      auto *element = elementPtr.get();
-      buffer << std::visit(*this, *element) << " ";
+      buffer << prExprPtr(elementPtr) << " ";
     }
 
     if (elements.empty()) {
@@ -93,6 +112,10 @@ private:
     auto ret = buffer.str();
     ret[ret.size() - 1] = endDelim;
     return ret;
+  }
+
+  [[nodiscard]] std::string prExprPtr(const ExprPtr &exprPtr) const {
+    return std::visit(*this, *exprPtr);
   }
 
   static std::vector<ExprPtr>

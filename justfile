@@ -63,7 +63,10 @@ test target:
 @lint:
   echo "============================= FLAWFINDER =============================="
   flawfinder -m0 src/*
+  echo;
+
   echo "=============================  CPPCHECK  ============================="
   cppcheck --enable=all --disable=missingInclude --inconclusive src/*
+
   echo "============================= CLANG-TIDY ============================="
   clang-tidy -p compile_commands.json src/*
