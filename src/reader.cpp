@@ -49,7 +49,7 @@ ExprPtr Reader::readForm() {
         throw std::runtime_error("odd number of elements in hash-map");
       }
 
-      std::unordered_map<ExprPtr, ExprPtr> map;
+      ExprPtrMap map;
       map.reserve(elementCount / 2);
 
       for (auto i = 0; i < elementCount; i += 2) {

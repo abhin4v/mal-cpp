@@ -77,6 +77,10 @@ public:
            ")";
   }
 
+  std::string operator()(const BuiltinFunction &builtinFunc) const {
+    return "(" + builtinFunc.name + ")";
+  }
+
 private:
   static std::string escapeCharacters(const std::string &input) {
     std::string output;

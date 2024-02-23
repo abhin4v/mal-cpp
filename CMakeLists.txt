@@ -24,3 +24,12 @@ add_executable(step1_read_print
   src/printer.cpp
   src/types.cpp)
 target_link_libraries(step1_read_print PRIVATE ${LINENOISE_LIBRARIES})
+
+add_executable(step2_eval
+  src/step2_eval.cpp
+  src/tokenizer.cpp
+  src/reader.cpp
+  src/printer.cpp
+  src/types.cpp
+  src/evaluator.cpp)
+target_link_libraries(step2_eval PRIVATE ${LINENOISE_LIBRARIES})
