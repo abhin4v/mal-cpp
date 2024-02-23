@@ -45,10 +45,10 @@ public:
     return prListLike(vector.value, '[', ']');
   }
 
-  std::string operator()(const HashMap &vector) const {
+  std::string operator()(const HashMap &hashmap) const {
     return prListLike(
         flattenKeyValuePairs(std::vector<std::pair<ExprPtr, ExprPtr>>(
-            vector.value.begin(), vector.value.end())),
+            hashmap.value.begin(), hashmap.value.end())),
         '{', '}');
   }
 
@@ -101,7 +101,7 @@ private:
     return output;
   }
 
-  [[nodiscard]] std::string prListLike(const std::vector<ExprPtr> &elements,
+  [[nodiscard]] std::string prListLike(const ExprPtrVec &elements,
                                        char startDelim, char endDelim) const {
     std::stringstream buffer;
     buffer << startDelim;
@@ -123,9 +123,9 @@ private:
     return std::visit(*this, *exprPtr);
   }
 
-  static std::vector<ExprPtr>
+  static ExprPtrVec
   flattenKeyValuePairs(const std::vector<std::pair<ExprPtr, ExprPtr>> &pairs) {
-    std::vector<ExprPtr> vec;
+    ExprPtrVec vec;
     vec.reserve(pairs.size() * 2);
     for (const auto &pair : pairs) {
       vec.push_back(pair.first);

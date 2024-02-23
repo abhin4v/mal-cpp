@@ -49,12 +49,14 @@ using Expr =
 
 using ExprPtr = std::shared_ptr<Expr>;
 
+using ExprPtrVec = std::vector<ExprPtr>;
+
 struct List {
-  std::vector<ExprPtr> value{};
+  ExprPtrVec value{};
 };
 
 struct Vector {
-  std::vector<ExprPtr> value{};
+  ExprPtrVec value{};
 };
 
 struct HashMap {

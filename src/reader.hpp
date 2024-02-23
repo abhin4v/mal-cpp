@@ -21,8 +21,8 @@ public:
   ExprPtr readForm();
 
 private:
-  std::vector<ExprPtr> readList(const Token &startDelimToken,
-                                TokenType endDelimTokenType);
+  ExprPtrVec readList(const Token &startDelimToken,
+                      TokenType endDelimTokenType);
 
   ExprPtr readAtom();
 

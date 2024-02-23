@@ -97,10 +97,10 @@ ExprPtr Reader::readForm() {
   throw std::runtime_error("no tokens");
 }
 
-std::vector<ExprPtr> Reader::readList(const Token &startDelimToken,
-                                      TokenType endDelimTokenType) {
+ExprPtrVec Reader::readList(const Token &startDelimToken,
+                            TokenType endDelimTokenType) {
   expect(startDelimToken);
-  std::vector<ExprPtr> elements;
+  ExprPtrVec elements;
 
   while (true) {
     auto oToken = peek();
