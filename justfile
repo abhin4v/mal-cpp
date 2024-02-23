@@ -43,6 +43,7 @@ _build target *flags:
 # builds a target
 build target *flags: (configure "Debug") (_build target flags)
 
+# builds a target in release mode
 build-release target *flags: (configure "Release") (_build target flags)
 
 # cleans the build
@@ -59,6 +60,13 @@ run target *args: (build target) (_run target args)
 # tests a target
 test target:
   cd ../.. && make test^cpp^{{replace_regex(target, '_.+', '')}}
+
+_all-targets:
+  find src -maxdepth 1 -name 'step*.cpp' -type f -print | cut -d '/' -f 2 | cut -d '.' -f 1 | sort
+
+# tests all targets
+test-all: (build "all")
+  just _all-targets | xargs -I {} just test {}
 
 @lint:
   echo "============================= FLAWFINDER =============================="

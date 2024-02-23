@@ -11,25 +11,30 @@ project(mal
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LINENOISE REQUIRED linenoise)
 
-find_package(spdlog REQUIRED)
 find_package(absl REQUIRED)
+
+add_library(mal-tokenizer OBJECT src/tokenizer.cpp)
+add_library(mal-reader OBJECT src/reader.cpp)
+add_library(mal-printer OBJECT src/printer.cpp)
+add_library(mal-types OBJECT src/types.cpp)
+add_library(mal-evaluator OBJECT src/evaluator.cpp)
 
 add_executable(step0_repl src/step0_repl.cpp)
 target_link_libraries(step0_repl PRIVATE ${LINENOISE_LIBRARIES})
 
-add_executable(step1_read_print
-  src/step1_read_print.cpp
-  src/tokenizer.cpp
-  src/reader.cpp
-  src/printer.cpp
-  src/types.cpp)
-target_link_libraries(step1_read_print PRIVATE ${LINENOISE_LIBRARIES})
+add_executable(step1_read_print src/step1_read_print.cpp)
+target_link_libraries(step1_read_print PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  ${LINENOISE_LIBRARIES})
 
-add_executable(step2_eval
-  src/step2_eval.cpp
-  src/tokenizer.cpp
-  src/reader.cpp
-  src/printer.cpp
-  src/types.cpp
-  src/evaluator.cpp)
-target_link_libraries(step2_eval PRIVATE ${LINENOISE_LIBRARIES})
+add_executable(step2_eval src/step2_eval.cpp)
+target_link_libraries(step2_eval PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  mal-evaluator
+  ${LINENOISE_LIBRARIES})
