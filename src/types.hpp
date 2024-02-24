@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 enum class Nil { NIL };
@@ -15,14 +16,17 @@ enum class Bool { TRUE, FALSE };
 
 struct String {
   std::string value;
+  explicit String(std::string value) : value(std::move(value)) {}
 };
 
 struct Symbol {
   std::string value;
+  explicit Symbol(std::string value) : value(std::move(value)) {}
 };
 
 struct Keyword {
   std::string value;
+  explicit Keyword(std::string value) : value(std::move(value)) {}
 };
 
 using BinaryFunction = std::function<std::int64_t(std::int64_t, std::int64_t)>;
@@ -62,14 +66,17 @@ using ExprPtrMap = std::unordered_map<ExprPtr, ExprPtr>;
 
 struct List {
   ExprPtrVec value{};
+  explicit List(ExprPtrVec value) : value(std::move(value)) {}
 };
 
 struct Vector {
   ExprPtrVec value{};
+  explicit Vector(ExprPtrVec value) : value(std::move(value)) {}
 };
 
 struct HashMap {
   ExprPtrMap value{};
+  explicit HashMap(ExprPtrMap value) : value(std::move(value)) {}
 };
 
 struct Quote {
@@ -97,4 +104,4 @@ struct MetaData {
   ExprPtr value;
 };
 
-using Env = std::unordered_map<std::string, BuiltinFunction>;
+using Env = std::unordered_map<std::string, const BuiltinFunction &>;

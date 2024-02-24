@@ -2,20 +2,18 @@
 #include "tokenizer.hpp"
 
 namespace {
-std::vector<Token> removeComments(const std::vector<Token> &tokens) {
-  std::vector<Token> tokensSansComments;
-  tokensSansComments.reserve(tokens.size());
+void removeComments(std::vector<Token> &tokens) {
 
-  std::copy_if(tokens.begin(), tokens.end(),
-               std::back_inserter(tokensSansComments),
-               [](auto token) { return token.type != TokenType::COMMENT; });
-
-  return tokensSansComments;
+  auto newEnd = std::remove_if(tokens.begin(), tokens.end(), [](auto token) {
+    return token.type == TokenType::COMMENT;
+  });
+  tokens.erase(newEnd, tokens.end());
 }
 } // namespace
 
 ExprPtr readStr(const std::string &input) {
-  auto tokens = removeComments(tokenize(input));
+  auto tokens = tokenize(input);
+  removeComments(tokens);
   if (tokens.empty()) {
     return std::make_shared<Expr>(Nil::NIL);
   }
@@ -120,6 +118,11 @@ ExprPtrVec Reader::readList(const Token &startDelimToken,
   }
 }
 
+static const auto NIL_LEXEME = "nil";
+static const auto TRUE_LEXEME = "true";
+static const auto FALSE_LEXEME = "false";
+static const auto KEYWORD_SIGIL = ':';
+
 ExprPtr Reader::readAtom() {
   auto token = advance();
   auto lexeme = token.lexeme;
@@ -135,16 +138,16 @@ ExprPtr Reader::readAtom() {
       auto num = parseUnsignedInteger(lexeme.substr(1));
       return std::make_shared<Expr>(Int{-num});
     }
-    if (lexeme == "nil") {
+    if (lexeme == NIL_LEXEME) {
       return std::make_shared<Expr>(Nil::NIL);
     }
-    if (lexeme == "true") {
+    if (lexeme == TRUE_LEXEME) {
       return std::make_shared<Expr>(Bool::TRUE);
     }
-    if (lexeme == "false") {
+    if (lexeme == FALSE_LEXEME) {
       return std::make_shared<Expr>(Bool::FALSE);
     }
-    if (chr == ':') {
+    if (chr == KEYWORD_SIGIL) {
       return std::make_shared<Expr>(Keyword{lexeme.substr(1)});
     }
     return std::make_shared<Expr>(Symbol{lexeme});

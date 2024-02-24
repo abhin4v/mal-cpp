@@ -10,8 +10,8 @@ std::int64_t intVal(const ExprPtr &exprPtr) {
   throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
 }
 
-ExprPtr callFunction(ExprPtrVec calleeAndArgs) {
-  auto callee = calleeAndArgs[0];
+ExprPtr callFunction(const ExprPtrVec &calleeAndArgs) {
+  const auto &callee = calleeAndArgs[0];
   if (auto *func = std::get_if<BuiltinFunction>(&*callee)) {
     auto argCount = calleeAndArgs.size() - 1;
     if (argCount != 2) {
@@ -35,5 +35,5 @@ ExprPtr eval(const Env &env, const ExprPtr &exprPtr) {
       return callFunction(list->value);
     }
   }
-  return std::make_shared<Expr>(evaluatedExpr);
+  return std::make_shared<Expr>(std::move(evaluatedExpr));
 }

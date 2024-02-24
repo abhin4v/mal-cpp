@@ -1,6 +1,9 @@
 #pragma once
 
 #include "types.hpp"
+#include <algorithm>
+#include <iterator>
+#include <utility>
 
 ExprPtr eval(const Env &, const ExprPtr &);
 
@@ -9,7 +12,7 @@ private:
   Env env;
 
 public:
-  explicit Evaluator(const Env &env) : env(env) {}
+  explicit Evaluator(Env env) : env(std::move(env)) {}
   Expr operator()(const Nil &nil) const { return nil; }
   Expr operator()(const Int &num) const { return num; }
   Expr operator()(const Bool &boolean) const { return boolean; }
@@ -36,29 +39,32 @@ public:
   }
 
   Expr operator()(const List &list) const {
-    if (list.value.empty()) {
+    auto elements = list.value;
+    if (elements.empty()) {
       return list;
     }
 
-    ExprPtrVec elements;
-    elements.reserve(list.value.size());
-    for (const auto &elementPtr : list.value) {
-      elements.push_back(eval(env, elementPtr));
-    }
-    return List{elements};
+    ExprPtrVec evaledElements;
+    evaledElements.reserve(elements.size());
+    std::transform(elements.begin(), elements.end(),
+                   std::back_inserter(evaledElements),
+                   [&](const auto &elemPtr) { return eval(env, elemPtr); });
+    return List{evaledElements};
   }
 
   Expr operator()(const Vector &vector) const {
+    auto elements = vector.value;
     if (vector.value.empty()) {
       return vector;
     }
 
-    ExprPtrVec elements;
-    elements.reserve(vector.value.size());
-    for (const auto &elementPtr : vector.value) {
-      elements.push_back(eval(env, elementPtr));
-    }
-    return Vector{elements};
+    ExprPtrVec evaledElements;
+    elements.reserve(elements.size());
+    std::transform(elements.begin(), elements.end(),
+                   std::back_inserter(evaledElements),
+                   [&](const auto &elemPtr) { return eval(env, elemPtr); });
+
+    return Vector{evaledElements};
   }
 
   Expr operator()(const HashMap &hashmap) const {

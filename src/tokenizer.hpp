@@ -3,6 +3,7 @@
 #include <cassert>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 enum class TokenType {
@@ -29,8 +30,8 @@ const char *tokenTypeName(TokenType tokenType);
 struct Token {
   TokenType type;
   std::string lexeme;
-  Token(TokenType type, const std::string &lexeme)
-      : type(type), lexeme(lexeme) {}
+  Token(TokenType type, std::string lexeme)
+      : type(type), lexeme(std::move(lexeme)) {}
 
   [[nodiscard]] std::string toString() const {
     std::stringstream buffer;
@@ -56,7 +57,7 @@ private:
   std::string buffer;
 
 public:
-  explicit Tokenizer(const std::string &input) : input(input){};
+  explicit Tokenizer(std::string input) : input(std::move(input)){};
 
   std::vector<Token> tokenize();
 
