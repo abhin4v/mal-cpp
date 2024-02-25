@@ -1,3 +1,4 @@
+#include "env.hpp"
 #include "evaluator.hpp"
 #include "linenoise.h"
 #include "printer.hpp"
@@ -26,18 +27,21 @@ int main() {
   linenoiseHistoryLoad(HISTORY_FILE);
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
-  auto replEnv = Env{
-      {"+", makeBuiltinFunction(
-                "add", [](auto arg1, auto arg2) { return arg1 + arg2; })},
-      {"-", makeBuiltinFunction(
-                "sub", [](auto arg1, auto arg2) { return arg1 - arg2; })},
-      {"*", makeBuiltinFunction(
-                "mult", [](auto arg1, auto arg2) { return arg1 * arg2; })},
-      {"/", makeBuiltinFunction(
-                "div", [](auto arg1, auto arg2) { return arg1 / arg2; })},
-  };
+  Env replEnv(nullptr);
+  replEnv.set("+", makeBuiltinFunction("add", [](auto arg1, auto arg2) {
+                return arg1 + arg2;
+              }));
+  replEnv.set("-", makeBuiltinFunction("sub", [](auto arg1, auto arg2) {
+                return arg1 - arg2;
+              }));
+  replEnv.set("*", makeBuiltinFunction("mult", [](auto arg1, auto arg2) {
+                return arg1 * arg2;
+              }));
+  replEnv.set("/", makeBuiltinFunction("div", [](auto arg1, auto arg2) {
+                return arg1 / arg2;
+              }));
 
-  const Evaluator evaluator(replEnv);
+  const Evaluator evaluator(std::move(replEnv));
 
   while (true) {
     auto *line = linenoise("user> ");

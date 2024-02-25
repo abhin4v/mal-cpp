@@ -1,6 +1,7 @@
 #include "types.hpp"
 
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
                                           BinaryFunction func) {
-  return std::make_shared<Expr>(BuiltinFunction{name, std::move(func)});
+  return std::make_shared<Expr>(
+      BuiltinFunction{std::move(name), std::move(func)});
 }

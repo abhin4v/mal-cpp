@@ -1,5 +1,6 @@
 #pragma once
 
+#include "env.hpp"
 #include "printer.hpp"
 #include "types.hpp"
 #include <algorithm>
@@ -51,14 +52,7 @@ public:
     return std::visit(*this, *(expr.value));
   }
 
-  ExprPtr operator()(const Symbol &sym) const {
-    const auto key = sym.value;
-    if (env.contains(key)) {
-      return env.at(key);
-    }
-
-    throw std::runtime_error("symbol not found: " + key);
-  }
+  ExprPtr operator()(const Symbol &sym) const { return env.get(sym.value); }
 
   ExprPtr operator()(const List &list) const {
     auto elements = list.value;
@@ -104,7 +98,7 @@ public:
   [[nodiscard]] ExprPtr eval(const ExprPtr &exprPtr) const {
     auto evaluatedExprPtr = std::visit(*this, *exprPtr);
 
-    if (auto *list = std::get_if<List>(&*evaluatedExprPtr)) {
+    if (const auto *list = std::get_if<List>(&*evaluatedExprPtr)) {
       if (!list->value.empty()) {
         return callFunction(list->value);
       }
@@ -114,7 +108,7 @@ public:
 
 private:
   static std::int64_t intVal(const ExprPtr &exprPtr) {
-    if (auto *expr = std::get_if<Int>(&*exprPtr)) {
+    if (const auto *expr = std::get_if<Int>(&*exprPtr)) {
       return expr->value;
     }
     throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
@@ -122,7 +116,7 @@ private:
 
   static ExprPtr callFunction(const ExprPtrVec &calleeAndArgs) {
     const auto &callee = calleeAndArgs[0];
-    if (auto *func = std::get_if<BuiltinFunction>(&*callee)) {
+    if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
       auto argCount = calleeAndArgs.size() - 1;
       if (argCount != 2) {
         throw std::runtime_error("expected two arguments, got: " +

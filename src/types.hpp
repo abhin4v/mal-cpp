@@ -58,7 +58,7 @@ using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
                           HashMap, Quote, QuasiQuote, Unquote, SpliceUnquote,
                           Deref, MetaData, BuiltinFunction>;
 
-using ExprPtr = std::shared_ptr<Expr>;
+using ExprPtr = std::shared_ptr<const Expr>;
 
 using ExprPtrVec = std::vector<ExprPtr>;
 
@@ -104,7 +104,5 @@ struct MetaData {
   ExprPtr value;
 };
 
-using Env = std::unordered_map<std::string, ExprPtr>;
-
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
                                           BinaryFunction func);
