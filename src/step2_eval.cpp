@@ -9,14 +9,14 @@
 
 ExprPtr READ(const std::string &input) { return readStr(input); }
 
-ExprPtr EVAL(const Env &replEnv, const ExprPtr &ast) {
-  return eval(replEnv, ast);
+ExprPtr EVAL(const Evaluator &evaluator, const ExprPtr &ast) {
+  return evaluator.eval(ast);
 }
 
 std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
 
-std::string rep(const Env &replEnv, const std::string &input) {
-  return PRINT(EVAL(replEnv, READ(input)));
+std::string rep(const Evaluator &evaluator, const std::string &input) {
+  return PRINT(EVAL(evaluator, READ(input)));
 }
 
 static const auto HISTORY_FILE = ".repl_history";
@@ -27,11 +27,17 @@ int main() {
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
   auto replEnv = Env{
-      {"+", {"add", [](auto arg1, auto arg2) { return arg1 + arg2; }}},
-      {"-", {"sub", [](auto arg1, auto arg2) { return arg1 - arg2; }}},
-      {"*", {"mult", [](auto arg1, auto arg2) { return arg1 * arg2; }}},
-      {"/", {"div", [](auto arg1, auto arg2) { return arg1 / arg2; }}},
+      {"+", makeBuiltinFunction(
+                "add", [](auto arg1, auto arg2) { return arg1 + arg2; })},
+      {"-", makeBuiltinFunction(
+                "sub", [](auto arg1, auto arg2) { return arg1 - arg2; })},
+      {"*", makeBuiltinFunction(
+                "mult", [](auto arg1, auto arg2) { return arg1 * arg2; })},
+      {"/", makeBuiltinFunction(
+                "div", [](auto arg1, auto arg2) { return arg1 / arg2; })},
   };
+
+  const Evaluator evaluator(replEnv);
 
   while (true) {
     auto *line = linenoise("user> ");
@@ -43,7 +49,7 @@ int main() {
     linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
 
     try {
-      auto output = rep(replEnv, std::string(line));
+      auto output = rep(evaluator, std::string(line));
       std::cout << output << std::endl;
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;

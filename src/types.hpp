@@ -104,4 +104,7 @@ struct MetaData {
   ExprPtr value;
 };
 
-using Env = std::unordered_map<std::string, const BuiltinFunction &>;
+using Env = std::unordered_map<std::string, ExprPtr>;
+
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+                                          BinaryFunction func);
