@@ -5,18 +5,19 @@
 #include "reader.hpp"
 #include "types.hpp"
 #include <iostream>
+#include <memory>
 #include <ostream>
 #include <sstream>
 
 ExprPtr READ(const std::string &input) { return readStr(input); }
 
-ExprPtr EVAL(const Evaluator &evaluator, const ExprPtr &ast) {
+ExprPtr EVAL(Evaluator &evaluator, const ExprPtr &ast) {
   return evaluator.eval(ast);
 }
 
 std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
 
-std::string rep(const Evaluator &evaluator, const std::string &input) {
+std::string rep(Evaluator &evaluator, const std::string &input) {
   return PRINT(EVAL(evaluator, READ(input)));
 }
 
@@ -41,7 +42,7 @@ int main() {
                 return arg1 / arg2;
               }));
 
-  const Evaluator evaluator(std::move(replEnv));
+  Evaluator evaluator(std::make_shared<Env>(replEnv));
 
   while (true) {
     auto *line = linenoise("user> ");

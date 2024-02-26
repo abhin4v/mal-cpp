@@ -41,3 +41,13 @@ target_link_libraries(step2_eval PRIVATE
   mal-env
   mal-evaluator
   ${LINENOISE_LIBRARIES})
+
+add_executable(step3_env src/step3_env.cpp)
+target_link_libraries(step3_env PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  mal-env
+  mal-evaluator
+  ${LINENOISE_LIBRARIES})

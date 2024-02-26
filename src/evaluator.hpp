@@ -6,14 +6,18 @@
 #include <algorithm>
 #include <iterator>
 #include <memory>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
 #include <utility>
 
 class Evaluator {
 private:
-  Env env;
+  EnvPtr env;
 
 public:
-  explicit Evaluator(Env env) : env(std::move(env)) {}
+  explicit Evaluator(EnvPtr env) : env(std::move(env)) {}
   ExprPtr operator()(const Nil &nil) const {
     return std::make_shared<Expr>(nil);
   }
@@ -48,42 +52,35 @@ public:
     return std::make_shared<Expr>(expr);
   }
 
-  ExprPtr operator()(const MetaData &expr) const {
+  ExprPtr operator()(const MetaData &expr) {
     return std::visit(*this, *(expr.value));
   }
 
-  ExprPtr operator()(const Symbol &sym) const { return env.get(sym.value); }
+  ExprPtr operator()(const Symbol &sym) const { return env->get(sym.value); }
 
-  ExprPtr operator()(const List &list) const {
+  ExprPtr operator()(const List &list) {
     auto elements = list.value;
     if (elements.empty()) {
       return std::make_shared<Expr>(list);
     }
 
     ExprPtrVec evaledElements;
-    evaledElements.reserve(elements.size());
-    std::transform(elements.begin(), elements.end(),
-                   std::back_inserter(evaledElements),
-                   [&](const auto &elemPtr) { return eval(elemPtr); });
+    evalElements(elements, evaledElements);
     return std::make_shared<Expr>(List{evaledElements});
   }
 
-  ExprPtr operator()(const Vector &vector) const {
+  ExprPtr operator()(const Vector &vector) {
     auto elements = vector.value;
     if (vector.value.empty()) {
       return std::make_shared<Expr>(vector);
     }
 
     ExprPtrVec evaledElements;
-    elements.reserve(elements.size());
-    std::transform(elements.begin(), elements.end(),
-                   std::back_inserter(evaledElements),
-                   [&](const auto &elemPtr) { return eval(elemPtr); });
-
+    evalElements(elements, evaledElements);
     return std::make_shared<Expr>(Vector{evaledElements});
   }
 
-  ExprPtr operator()(const HashMap &hashmap) const {
+  ExprPtr operator()(const HashMap &hashmap) {
     if (hashmap.value.empty()) {
       return std::make_shared<Expr>(hashmap);
     }
@@ -95,38 +92,73 @@ public:
     return std::make_shared<Expr>(HashMap{map});
   }
 
-  [[nodiscard]] ExprPtr eval(const ExprPtr &exprPtr) const {
-    auto evaluatedExprPtr = std::visit(*this, *exprPtr);
-
-    if (const auto *list = std::get_if<List>(&*evaluatedExprPtr)) {
-      if (!list->value.empty()) {
-        return callFunction(list->value);
-      }
-    }
-    return evaluatedExprPtr;
-  }
+  [[nodiscard]] ExprPtr eval(const ExprPtr &exprPtr);
 
 private:
-  static std::int64_t intVal(const ExprPtr &exprPtr) {
-    if (const auto *expr = std::get_if<Int>(&*exprPtr)) {
-      return expr->value;
+  void evalElements(const ExprPtrVec &elements, ExprPtrVec &evaledElements) {
+    evaledElements.reserve(elements.size());
+    std::transform(elements.begin(), elements.end(),
+                   std::back_inserter(evaledElements),
+                   [&](const auto &elemPtr) { return eval(elemPtr); });
+  }
+
+  static std::optional<std::string> firstSymbolOfList(const ExprPtr &exprPtr) {
+    if (const auto *list = std::get_if<List>(&*exprPtr)) {
+      if (!list->value.empty()) {
+        if (const auto *first = std::get_if<Symbol>(&*(list->value[0]))) {
+          return std::make_optional(first->value);
+        }
+      }
     }
-    throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
+    return std::nullopt;
+  }
+
+  ExprPtr evalSpecialForm(const std::string &specialSymbol,
+                          const ExprPtrVec &elements);
+
+  ExprPtr evalDefBang(const ExprPtrVec &elements);
+
+  ExprPtr evalLetStar(const ExprPtrVec &elements);
+
+  ExprPtr doEvalLetStar(const ExprPtrVec &bindingList,
+                        const ExprPtr &letBodyPtr);
+
+  static ExprPtr defineBinding(Evaluator &evaluator, const EnvPtr &env,
+                               const ExprPtr &bindingNamePtr,
+                               const ExprPtr &bindingValuePtr) {
+    if (const auto *bindingName = std::get_if<Symbol>(&*bindingNamePtr)) {
+      auto evaluatedBindingValue = evaluator.eval(bindingValuePtr);
+      auto name = bindingName->value;
+      env->set(std::move(name), evaluatedBindingValue);
+      return evaluatedBindingValue;
+    }
+    throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
   }
 
   static ExprPtr callFunction(const ExprPtrVec &calleeAndArgs) {
     const auto &callee = calleeAndArgs[0];
     if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
-      auto argCount = calleeAndArgs.size() - 1;
-      if (argCount != 2) {
-        throw std::runtime_error("expected two arguments, got: " +
-                                 std::to_string(argCount));
-      }
+      checkParamCount(calleeAndArgs.size() - 1, 2);
 
       return std::make_shared<Expr>(
           Int{func->value(intVal(calleeAndArgs[1]), intVal(calleeAndArgs[2]))});
     }
 
     throw std::runtime_error("not a function: " + prStr(callee, true));
+  }
+
+  static void checkParamCount(size_t paramCount, size_t expected) {
+    if (paramCount != expected) {
+      throw std::runtime_error(
+          "expected " + std::to_string(expected) +
+          " arguments, got: " + std::to_string(paramCount));
+    }
+  }
+
+  static std::int64_t intVal(const ExprPtr &exprPtr) {
+    if (const auto *expr = std::get_if<Int>(&*exprPtr)) {
+      return expr->value;
+    }
+    throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
   }
 };

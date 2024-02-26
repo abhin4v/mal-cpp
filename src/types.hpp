@@ -106,3 +106,5 @@ struct MetaData {
 
 std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
                                           BinaryFunction func);
+
+ExprPtr nilPtr();

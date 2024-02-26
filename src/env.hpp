@@ -11,27 +11,29 @@
 
 class Env {
 private:
-  std::unique_ptr<Env> outer;
+  using EnvPtr = std::shared_ptr<Env>;
+  EnvPtr outer;
   std::unordered_map<std::string, ExprPtr> data;
 
 public:
-  explicit Env(std::unique_ptr<Env> outer) : outer(std::move(outer)) {}
+  explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
   void set(std::string name, const ExprPtr &exprPtr) {
-    data.emplace(std::move(name), exprPtr);
+    if (data.contains(name)) {
+      data[std::move(name)] = exprPtr;
+    } else {
+      data.emplace(std::move(name), exprPtr);
+    }
   }
 
   [[nodiscard]] std::optional<ExprPtr> find(const std::string &name) const {
     const auto *env = this;
-
     while (env != nullptr) {
       if (env->data.contains(name)) {
         return std::make_optional(env->data.at(name));
       }
-
       env = (env->outer).get();
     }
-
     return std::nullopt;
   }
 
@@ -40,7 +42,30 @@ public:
     if (val.has_value()) {
       return val.value();
     }
-
-    throw std::runtime_error("unknown binding name: " + name);
+    throw std::runtime_error("'" + name + "' not found");
   }
+
+  //   static void dump(const EnvPtr &env) {
+  //     std::cerr << "----------- Env Dump Start ------------" << std::endl;
+  //     doDump(env);
+  //     std::cerr << "-----------  Env Dump End  ------------" << std::endl;
+  //   }
+
+  // private:
+  //   static void doDump(const EnvPtr &env) {
+  //     for (const auto &[key, value] : env->data) {
+  //       std::cerr << key << " = " << prStr(value, true) << std::endl;
+  //     }
+  //     if (env->data.empty()) {
+  //       std::cerr << "EMPTY" << std::endl;
+  //     }
+
+  //     if (env->outer != nullptr) {
+
+  //       std::cerr << "OUTER" << std::endl;
+  //       doDump(env->outer);
+  //     }
+  //   }
 };
+
+using EnvPtr = std::shared_ptr<Env>;

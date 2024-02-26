@@ -15,7 +15,7 @@ ExprPtr readStr(const std::string &input) {
   auto tokens = tokenize(input);
   removeComments(tokens);
   if (tokens.empty()) {
-    return std::make_shared<Expr>(Nil::NIL);
+    return nilPtr();
   }
 
   Reader reader(tokens);
@@ -139,7 +139,7 @@ ExprPtr Reader::readAtom() {
       return std::make_shared<Expr>(Int{-num});
     }
     if (lexeme == NIL_LEXEME) {
-      return std::make_shared<Expr>(Nil::NIL);
+      return nilPtr();
     }
     if (lexeme == TRUE_LEXEME) {
       return std::make_shared<Expr>(Bool::TRUE);
