@@ -1,5 +1,6 @@
 #include "reader.hpp"
 #include "tokenizer.hpp"
+#include "types.hpp"
 
 namespace {
 void removeComments(std::vector<Token> &tokens) {
@@ -142,10 +143,10 @@ ExprPtr Reader::readAtom() {
       return nilPtr();
     }
     if (lexeme == TRUE_LEXEME) {
-      return std::make_shared<Expr>(Bool::TRUE);
+      return truePtr();
     }
     if (lexeme == FALSE_LEXEME) {
-      return std::make_shared<Expr>(Bool::FALSE);
+      return falsePtr();
     }
     if (chr == KEYWORD_SIGIL) {
       return std::make_shared<Expr>(Keyword{lexeme.substr(1)});

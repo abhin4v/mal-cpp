@@ -1,10 +1,10 @@
 #include "evaluator.hpp"
+#include "printer.hpp"
 #include "types.hpp"
 
 ExprPtr Evaluator::eval(const ExprPtr &exprPtr) {
   static const std::unordered_set<std::string> SPECIAL_SYMBOLS = {
-      "def!",
-      "let*",
+      "def!", "let*", "do", "if", "fn*",
   };
 
   auto firstSym = firstSymbolOfList(exprPtr);
@@ -28,6 +28,15 @@ ExprPtr Evaluator::evalSpecialForm(const std::string &specialSymbol,
   }
   if (specialSymbol == "let*") {
     return evalLetStar(elements);
+  }
+  if (specialSymbol == "do") {
+    return evalDo(elements);
+  }
+  if (specialSymbol == "if") {
+    return evalIf(elements);
+  }
+  if (specialSymbol == "fn*") {
+    return evalFnStar(elements);
   }
 
   throw std::runtime_error("not a special symbol: " + specialSymbol);
@@ -75,4 +84,81 @@ ExprPtr Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
   }
 
   return evaluator->eval(letBodyPtr);
+}
+
+ExprPtr Evaluator::evalDo(const ExprPtrVec &elements) {
+  ExprPtr ret = nilPtr();
+
+  for (auto i = 1; i < elements.size(); i++) {
+    ret = eval(elements[i]);
+  }
+
+  return ret;
+}
+
+ExprPtr Evaluator::evalIf(const ExprPtrVec &elements) {
+  auto argCount = elements.size() - 1;
+  if (argCount != 2 && argCount != 3) {
+    throw std::runtime_error("expected two or three arguments, got: " +
+                             std::to_string(argCount));
+  }
+
+  auto evaluatedCond = eval(elements[1]);
+  if (const auto *cond = std::get_if<Bool>(&*evaluatedCond)) {
+    if (*cond == Bool::FALSE) {
+      return argCount == 3 ? eval(elements[3]) : nilPtr();
+    }
+  }
+  if (const auto *cond = std::get_if<Nil>(&*evaluatedCond)) {
+    return argCount == 3 ? eval(elements[3]) : nilPtr();
+  }
+  return eval(elements[2]);
+}
+
+ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
+  checkParamCount(elements.size() - 1, 2);
+
+  if (const auto *params = std::get_if<List>(&*elements[1])) {
+    std::vector<std::string> paramNames;
+    paramNames.reserve(params->value.size());
+    for (const auto &param : params->value) {
+      if (const auto *paramName = std::get_if<Symbol>(&*param)) {
+        paramNames.push_back(paramName->value);
+        continue;
+      }
+
+      throw std::runtime_error("function param is not symbol: " +
+                               prStr(param, true));
+    }
+
+    return std::make_shared<Expr>(
+        Lambda{std::move(paramNames), elements[2], env});
+  }
+
+  throw std::runtime_error("function params are not a list: " +
+                           prStr(elements[1], true));
+}
+
+ExprPtr Evaluator::callFunction(const ExprPtrVec &calleeAndArgs) {
+  const auto &callee = calleeAndArgs[0];
+  if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
+    checkParamCount(calleeAndArgs.size() - 1, 2);
+    return std::make_shared<Expr>(
+        Int{func->value(intVal(calleeAndArgs[1]), intVal(calleeAndArgs[2]))});
+  }
+
+  if (const auto *lambda = std::get_if<Lambda>(&*callee)) {
+    auto paramCount = lambda->params.size();
+    checkParamCount(calleeAndArgs.size() - 1, paramCount);
+
+    Env lambdaEnv(lambda->env);
+    for (int i = 0; i < paramCount; i++) {
+      lambdaEnv.set(lambda->params[i], eval(calleeAndArgs[i + 1]));
+    }
+
+    Evaluator lambdaEvaluator(std::make_shared<Env>(lambdaEnv));
+    return lambdaEvaluator.eval(lambda->body);
+  }
+
+  throw std::runtime_error("not a function: " + prStr(callee, true));
 }

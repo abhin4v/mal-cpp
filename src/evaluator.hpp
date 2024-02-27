@@ -36,6 +36,9 @@ public:
   ExprPtr operator()(const BuiltinFunction &func) const {
     return std::make_shared<Expr>(func);
   }
+  ExprPtr operator()(const Lambda &lambda) const {
+    return std::make_shared<Expr>(lambda);
+  }
   ExprPtr operator()(const Quote &expr) const {
     return std::make_shared<Expr>(expr);
   }
@@ -123,6 +126,14 @@ private:
   ExprPtr doEvalLetStar(const ExprPtrVec &bindingList,
                         const ExprPtr &letBodyPtr);
 
+  ExprPtr evalDo(const ExprPtrVec &elements);
+
+  ExprPtr evalIf(const ExprPtrVec &elements);
+
+  ExprPtr evalFnStar(const ExprPtrVec &elements);
+
+  ExprPtr callFunction(const ExprPtrVec &calleeAndArgs);
+
   static ExprPtr defineBinding(Evaluator &evaluator, const EnvPtr &env,
                                const ExprPtr &bindingNamePtr,
                                const ExprPtr &bindingValuePtr) {
@@ -133,18 +144,6 @@ private:
       return evaluatedBindingValue;
     }
     throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
-  }
-
-  static ExprPtr callFunction(const ExprPtrVec &calleeAndArgs) {
-    const auto &callee = calleeAndArgs[0];
-    if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
-      checkParamCount(calleeAndArgs.size() - 1, 2);
-
-      return std::make_shared<Expr>(
-          Int{func->value(intVal(calleeAndArgs[1]), intVal(calleeAndArgs[2]))});
-    }
-
-    throw std::runtime_error("not a function: " + prStr(callee, true));
   }
 
   static void checkParamCount(size_t paramCount, size_t expected) {

@@ -51,3 +51,13 @@ target_link_libraries(step3_env PRIVATE
   mal-env
   mal-evaluator
   ${LINENOISE_LIBRARIES})
+
+add_executable(step4_if_fn_do src/step4_if_fn_do.cpp)
+target_link_libraries(step4_if_fn_do PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  mal-env
+  mal-evaluator
+  ${LINENOISE_LIBRARIES})

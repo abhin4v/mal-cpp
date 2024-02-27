@@ -78,7 +78,11 @@ public:
   }
 
   std::string operator()(const BuiltinFunction &builtinFunc) const {
-    return "(" + builtinFunc.name + ")";
+    return "#<" + builtinFunc.name + ">";
+  }
+
+  std::string operator()(const Lambda & /*lambda*/) const {
+    return "#<function>";
   }
 
 private:

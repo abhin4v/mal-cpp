@@ -36,6 +36,8 @@ struct BuiltinFunction {
   BinaryFunction value;
 };
 
+struct Lambda;
+
 struct List;
 
 struct Vector;
@@ -56,7 +58,7 @@ struct MetaData;
 
 using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
                           HashMap, Quote, QuasiQuote, Unquote, SpliceUnquote,
-                          Deref, MetaData, BuiltinFunction>;
+                          Deref, MetaData, BuiltinFunction, Lambda>;
 
 using ExprPtr = std::shared_ptr<const Expr>;
 
@@ -104,7 +106,17 @@ struct MetaData {
   ExprPtr value;
 };
 
+class Env;
+
+struct Lambda {
+  std::vector<std::string> params;
+  ExprPtr body;
+  std::shared_ptr<Env> env;
+};
+
 std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
                                           BinaryFunction func);
 
 ExprPtr nilPtr();
+ExprPtr truePtr();
+ExprPtr falsePtr();
