@@ -145,19 +145,4 @@ private:
     }
     throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
   }
-
-  static void checkParamCount(size_t paramCount, size_t expected) {
-    if (paramCount != expected) {
-      throw std::runtime_error(
-          "expected " + std::to_string(expected) +
-          " arguments, got: " + std::to_string(paramCount));
-    }
-  }
-
-  static std::int64_t intVal(const ExprPtr &exprPtr) {
-    if (const auto *expr = std::get_if<Int>(&*exprPtr)) {
-      return expr->value;
-    }
-    throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
-  }
 };

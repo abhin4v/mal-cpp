@@ -1,5 +1,5 @@
 #include "printer.hpp"
 
-std::string prStr(const ExprPtr &expr, bool printReadably) {
-  return std::visit(Printer(printReadably), *expr);
+std::string prStr(const ExprPtr &exprPtr, bool printReadably) {
+  return std::visit(Printer(printReadably), *exprPtr);
 }

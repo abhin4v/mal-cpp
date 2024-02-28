@@ -1,9 +1,35 @@
 #include "types.hpp"
+#include "printer.hpp"
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
-                                          BinaryFunction func) {
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name, ExprFunction func) {
   return std::make_shared<Expr>(
       BuiltinFunction{std::move(name), std::move(func)});
+}
+
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+                                          BinaryIntFunction func) {
+  auto exprFunc = [&](const ExprPtrSpan &args) {
+    checkParamCount(args.size(), 2);
+    return std::make_shared<Expr>(Int{func(intVal(args[0]), intVal(args[1]))});
+  };
+
+  return std::make_shared<Expr>(
+      BuiltinFunction{std::move(name), std::move(exprFunc)});
+}
+
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+                                          VariadicIntFunction func) {
+  auto exprFunc = [&](const ExprPtrSpan &args) {
+    std::vector<std::int64_t> intArgs;
+    intArgs.reserve(args.size());
+    std::transform(args.begin(), args.end(), std::back_inserter(intArgs),
+                   [](auto arg) { return intVal(arg); });
+
+    return std::make_shared<Expr>(Int{func(intArgs)});
+  };
+
+  return std::make_shared<Expr>(
+      BuiltinFunction{std::move(name), std::move(exprFunc)});
 }
 
 ExprPtr nilPtr() {
@@ -19,4 +45,25 @@ ExprPtr truePtr() {
 ExprPtr falsePtr() {
   static const auto falsePtr = std::make_shared<const Expr>(Bool::FALSE);
   return falsePtr;
+}
+
+void checkParamCount(size_t paramCount, size_t expected) {
+  if (paramCount != expected) {
+    throw std::runtime_error("expected " + std::to_string(expected) +
+                             " arguments, got: " + std::to_string(paramCount));
+  }
+}
+
+void checkMinParamCount(size_t paramCount, size_t expected) {
+  if (paramCount < expected) {
+    throw std::runtime_error("expected at least " + std::to_string(expected) +
+                             " arguments, got: " + std::to_string(paramCount));
+  }
+}
+
+std::int64_t intVal(const ExprPtr &exprPtr) {
+  if (const auto *expr = std::get_if<Int>(&*exprPtr)) {
+    return expr->value;
+  }
+  throw std::runtime_error("not an integer: " + prStr(exprPtr, true));
 }

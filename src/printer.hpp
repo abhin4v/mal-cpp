@@ -143,4 +143,4 @@ private:
   }
 };
 
-std::string prStr(const ExprPtr &expr, bool printReadably);
+std::string prStr(const ExprPtr &exprPtr, bool printReadably);

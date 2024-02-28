@@ -6,6 +6,7 @@
 #include "types.hpp"
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <ostream>
 #include <sstream>
 
@@ -29,14 +30,17 @@ int main() {
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
   Env replEnv(nullptr);
-  replEnv.set("+", makeBuiltinFunction("add", [](auto arg1, auto arg2) {
-                return arg1 + arg2;
-              }));
+  replEnv.set("+", makeBuiltinFunction(
+                       "add", [](const std::vector<std::int64_t> &args) {
+                         return std::accumulate(args.begin(), args.end(), 0LL);
+                       }));
+  replEnv.set("*", makeBuiltinFunction(
+                       "mult", [](const std::vector<std::int64_t> &args) {
+                         return std::accumulate(args.begin(), args.end(), 1LL,
+                                                std::multiplies<>());
+                       }));
   replEnv.set("-", makeBuiltinFunction("sub", [](auto arg1, auto arg2) {
                 return arg1 - arg2;
-              }));
-  replEnv.set("*", makeBuiltinFunction("mult", [](auto arg1, auto arg2) {
-                return arg1 * arg2;
               }));
   replEnv.set("/", makeBuiltinFunction("div", [](auto arg1, auto arg2) {
                 return arg1 / arg2;
