@@ -29,8 +29,8 @@ public:
   }
 
   std::string operator()(const String &str) const {
-    return '"' + (printReadably ? escapeCharacters(str.value) : str.value) +
-           '"';
+    return (printReadably ? '"' + escapeCharacters(str.value) + '"'
+                          : str.value);
   }
 
   std::string operator()(const Symbol &sym) const { return sym.value; }

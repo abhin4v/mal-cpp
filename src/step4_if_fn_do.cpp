@@ -36,6 +36,7 @@ int main() {
   }
 
   Evaluator evaluator(std::make_shared<Env>(replEnv));
+  rep(evaluator, "(def! not (fn* (a) (if a false true)))");
 
   while (true) {
     auto *line = linenoise("user> ");

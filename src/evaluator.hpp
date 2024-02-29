@@ -132,6 +132,8 @@ private:
 
   ExprPtr evalFnStar(const ExprPtrVec &elements);
 
+  ExprPtr doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body);
+
   ExprPtr callFunction(const ExprPtrVec &calleeAndArgs);
 
   static std::pair<std::string, ExprPtr>

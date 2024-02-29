@@ -132,24 +132,31 @@ ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
   checkParamCount(elements.size() - 1, 2);
 
   if (const auto *params = std::get_if<List>(&*elements[1])) {
-    std::vector<std::string> paramNames;
-    paramNames.reserve(params->value.size());
-    for (const auto &param : params->value) {
-      if (const auto *paramName = std::get_if<Symbol>(&*param)) {
-        paramNames.push_back(paramName->value);
-        continue;
-      }
-
-      throw std::runtime_error("function param is not symbol: " +
-                               prStr(param, true));
-    }
-
-    return std::make_shared<Expr>(Lambda{std::move(paramNames), elements[2],
-                                         std::make_shared<Env>(Env(env))});
+    return doEvalFnStar(params->value, elements[2]);
+  }
+  if (const auto *params = std::get_if<Vector>(&*elements[1])) {
+    return doEvalFnStar(params->value, elements[2]);
   }
 
   throw std::runtime_error("function params are not a list: " +
                            prStr(elements[1], true));
+}
+
+ExprPtr Evaluator::doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body) {
+  std::vector<std::string> paramNames;
+  paramNames.reserve(params.size());
+  for (const auto &param : params) {
+    if (const auto *paramName = std::get_if<Symbol>(&*param)) {
+      paramNames.push_back(paramName->value);
+      continue;
+    }
+
+    throw std::runtime_error("function param is not symbol: " +
+                             prStr(param, true));
+  }
+
+  return std::make_shared<Expr>(
+      Lambda{std::move(paramNames), body, std::make_shared<Env>(Env(env))});
 }
 
 ExprPtr Evaluator::callFunction(const ExprPtrVec &calleeAndArgs) {

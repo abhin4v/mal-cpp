@@ -3,9 +3,12 @@
 #include "equator.hpp"
 #include "printer.hpp"
 #include "types.hpp"
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <sstream>
+#include <string>
 #include <variant>
 
 class Core {
@@ -46,10 +49,27 @@ private:
         ">=", makeBuiltinFunction(">=", 2, [](const ExprPtrSpan &args) {
           return intVal(args[0]) >= intVal(args[1]) ? truePtr() : falsePtr();
         }));
-    builtins.emplace("prn", makeBuiltinFunction("prn", [](const ExprPtr &arg) {
-                       std::cout << prStr(arg, true) << std::endl;
-                       return nilPtr();
-                     }));
+    builtins.emplace(
+        "pr-str",
+        makeBuiltinFunction("pr-str", -1, [](const ExprPtrSpan &args) {
+          return std::make_shared<Expr>(String{toString(args, true, " ")});
+        }));
+    builtins.emplace(
+        "str", makeBuiltinFunction("str", -1, [](const ExprPtrSpan &args) {
+          return std::make_shared<Expr>(String{toString(args, false, "")});
+        }));
+
+    builtins.emplace(
+        "prn", makeBuiltinFunction("prn", -1, [](const ExprPtrSpan &args) {
+          std::cout << toString(args, true, " ") << std::endl;
+          return nilPtr();
+        }));
+    builtins.emplace(
+        "println",
+        makeBuiltinFunction("println", -1, [](const ExprPtrSpan &args) {
+          std::cout << toString(args, false, " ") << std::endl;
+          return nilPtr();
+        }));
     builtins.emplace("list?",
                      makeBuiltinFunction("list?", [](const ExprPtr &arg) {
                        return std::holds_alternative<List>(*arg);
@@ -72,6 +92,19 @@ private:
         }));
 
     return builtins;
+  }
+
+  static std::string toString(const ExprPtrSpan &args, bool printReadably,
+                              const std::string &separator) {
+    if (args.empty()) {
+      return "";
+    }
+    std::stringstream buffer;
+    std::for_each(args.begin(), args.end(), [&](const auto &arg) {
+      buffer << prStr(arg, printReadably) << separator;
+    });
+    auto str{buffer.str()};
+    return str.substr(0, str.size() - separator.size());
   }
 
   static std::int64_t collectionCount(const ExprPtr &arg) {
