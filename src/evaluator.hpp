@@ -134,14 +134,14 @@ private:
 
   ExprPtr callFunction(const ExprPtrVec &calleeAndArgs);
 
-  static ExprPtr defineBinding(Evaluator &evaluator, const EnvPtr &env,
-                               const ExprPtr &bindingNamePtr,
-                               const ExprPtr &bindingValuePtr) {
+  static std::pair<std::string, ExprPtr>
+  defineBinding(Evaluator &evaluator, const EnvPtr &env,
+                const ExprPtr &bindingNamePtr, const ExprPtr &bindingValuePtr) {
     if (const auto *bindingName = std::get_if<Symbol>(&*bindingNamePtr)) {
       auto evaluatedBindingValue = evaluator.eval(bindingValuePtr);
       auto name = bindingName->value;
-      env->set(std::move(name), evaluatedBindingValue);
-      return evaluatedBindingValue;
+      env->set(name, evaluatedBindingValue);
+      return {name, evaluatedBindingValue};
     }
     throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
   }

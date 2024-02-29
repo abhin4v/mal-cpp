@@ -19,19 +19,7 @@ public:
   explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
   void set(const std::string &name, const ExprPtr &exprPtr) {
-    if (data.contains(name)) {
-      data[name] = exprPtr;
-    } else {
-      data.emplace(name, exprPtr);
-    }
-  }
-
-  void set(std::string &&name, const ExprPtr &exprPtr) {
-    if (data.contains(name)) {
-      data[std::move(name)] = exprPtr;
-    } else {
-      data.emplace(std::move(name), exprPtr);
-    }
+    data[name] = exprPtr;
   }
 
   [[nodiscard]] std::optional<ExprPtr> find(const std::string &name) const {

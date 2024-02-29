@@ -44,7 +44,7 @@ ExprPtr Evaluator::evalSpecialForm(const std::string &specialSymbol,
 
 ExprPtr Evaluator::evalDefBang(const ExprPtrVec &elements) {
   checkParamCount(elements.size() - 1, 2);
-  return defineBinding(*this, env, elements[1], elements[2]);
+  return std::get<1>(defineBinding(*this, env, elements[1], elements[2]));
 }
 
 ExprPtr Evaluator::evalLetStar(const ExprPtrVec &elements) {
@@ -75,12 +75,25 @@ ExprPtr Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
   Env letEnv(this->env);
   Evaluator *evaluator = this;
 
+  std::unordered_map<std::string, ExprPtr> bindings;
+  bindings.reserve(bindingListSize / 2);
+
   for (auto i = 0; i < bindingListSize; i += 2) {
     auto letEnvPtr = std::make_shared<Env>(letEnv);
-    defineBinding(*evaluator, letEnvPtr, bindingList[i], bindingList[i + 1]);
+    auto nameValue = defineBinding(*evaluator, letEnvPtr, bindingList[i],
+                                   bindingList[i + 1]);
+    bindings[nameValue.first] = nameValue.second;
     Evaluator letEvaluator(letEnvPtr);
     evaluator = &letEvaluator;
     letEnv = Env(letEnvPtr);
+  }
+
+  for (const auto &[name, value] : bindings) {
+    if (const auto *lambda = std::get_if<Lambda>(&*value)) {
+      for (const auto &[name, value] : bindings) {
+        lambda->env->set(name, value);
+      }
+    }
   }
 
   return evaluator->eval(letBodyPtr);
@@ -131,8 +144,8 @@ ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
                                prStr(param, true));
     }
 
-    return std::make_shared<Expr>(
-        Lambda{std::move(paramNames), elements[2], env});
+    return std::make_shared<Expr>(Lambda{std::move(paramNames), elements[2],
+                                         std::make_shared<Env>(Env(env))});
   }
 
   throw std::runtime_error("function params are not a list: " +
