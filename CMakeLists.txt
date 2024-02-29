@@ -23,6 +23,7 @@ add_library(mal-equator OBJECT src/equator.cpp)
 add_library(mal-hasher OBJECT src/hasher.cpp)
 add_library(mal-evaluator OBJECT src/evaluator.cpp)
 add_library(mal-env OBJECT src/env.cpp)
+add_library(mal-core OBJECT src/core.cpp)
 
 add_executable(step0_repl src/step0_repl.cpp)
 target_link_libraries(step0_repl PRIVATE ${LINENOISE_LIBRARIES})
@@ -47,6 +48,7 @@ target_link_libraries(step2_eval PRIVATE
   mal-hasher
   mal-env
   mal-evaluator
+  mal-core
   ${LINENOISE_LIBRARIES})
 
 add_executable(step3_env src/step3_env.cpp)
@@ -59,6 +61,7 @@ target_link_libraries(step3_env PRIVATE
   mal-hasher
   mal-env
   mal-evaluator
+  mal-core
   ${LINENOISE_LIBRARIES})
 
 add_executable(step4_if_fn_do src/step4_if_fn_do.cpp)
@@ -71,4 +74,5 @@ target_link_libraries(step4_if_fn_do PRIVATE
   mal-hasher
   mal-env
   mal-evaluator
+  mal-core
   ${LINENOISE_LIBRARIES})

@@ -24,7 +24,7 @@ public:
   }
   bool operator()(const BuiltinFunction &func1,
                   const BuiltinFunction &func2) const {
-    return func1.name == func2.name;
+    return func1.name == func2.name && func1.arity == func2.arity;
   }
   bool operator()(const Lambda & /*func1*/, const Lambda & /*func2*/) const {
     return false;

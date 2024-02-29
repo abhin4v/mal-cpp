@@ -18,7 +18,15 @@ private:
 public:
   explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
-  void set(std::string name, const ExprPtr &exprPtr) {
+  void set(const std::string &name, const ExprPtr &exprPtr) {
+    if (data.contains(name)) {
+      data[name] = exprPtr;
+    } else {
+      data.emplace(name, exprPtr);
+    }
+  }
+
+  void set(std::string &&name, const ExprPtr &exprPtr) {
     if (data.contains(name)) {
       data[std::move(name)] = exprPtr;
     } else {

@@ -1,3 +1,4 @@
+#include "core.hpp"
 #include "env.hpp"
 #include "evaluator.hpp"
 #include "linenoise.h"
@@ -30,21 +31,9 @@ int main() {
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
   Env replEnv(nullptr);
-  replEnv.set("+", makeBuiltinFunction(
-                       "add", [](const std::vector<std::int64_t> &args) {
-                         return std::accumulate(args.begin(), args.end(), 0LL);
-                       }));
-  replEnv.set("*", makeBuiltinFunction(
-                       "mult", [](const std::vector<std::int64_t> &args) {
-                         return std::accumulate(args.begin(), args.end(), 1LL,
-                                                std::multiplies<>());
-                       }));
-  replEnv.set("-", makeBuiltinFunction("sub", [](auto arg1, auto arg2) {
-                return arg1 - arg2;
-              }));
-  replEnv.set("/", makeBuiltinFunction("div", [](auto arg1, auto arg2) {
-                return arg1 / arg2;
-              }));
+  for (const auto &[name, func] : Core::ns()) {
+    replEnv.set(name, func);
+  }
 
   Evaluator evaluator(std::make_shared<Env>(replEnv));
 

@@ -11,25 +11,45 @@ size_t ExprPtrHash::operator()(const ExprPtr &key) const {
   return exprHash(*key);
 }
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name, ExprFunction func) {
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name, int arity,
+                                          ExprFunction func) {
   return std::make_shared<Expr>(
-      BuiltinFunction{std::move(name), std::move(func)});
+      BuiltinFunction{std::move(name), arity, std::move(func)});
 }
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+                                          UnaryFunction func) {
+  auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
+    checkParamCount(args.size(), 1);
+    return func(args[0]);
+  };
+
+  return makeBuiltinFunction(name, 1, exprFunc);
+}
+
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+                                          UnaryBooleanFunction func) {
+  auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
+    checkParamCount(args.size(), 1);
+    return func(args[0]) ? truePtr() : falsePtr();
+  };
+
+  return makeBuiltinFunction(name, 1, exprFunc);
+}
+
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           BinaryIntFunction func) {
-  auto exprFunc = [&](const ExprPtrSpan &args) {
+  auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
     checkParamCount(args.size(), 2);
     return std::make_shared<Expr>(Int{func(intVal(args[0]), intVal(args[1]))});
   };
 
-  return std::make_shared<Expr>(
-      BuiltinFunction{std::move(name), std::move(exprFunc)});
+  return makeBuiltinFunction(name, 2, exprFunc);
 }
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           VariadicIntFunction func) {
-  auto exprFunc = [&](const ExprPtrSpan &args) {
+  auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
     std::vector<std::int64_t> intArgs;
     intArgs.reserve(args.size());
     std::transform(args.begin(), args.end(), std::back_inserter(intArgs),
@@ -38,8 +58,7 @@ std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
     return std::make_shared<Expr>(Int{func(intArgs)});
   };
 
-  return std::make_shared<Expr>(
-      BuiltinFunction{std::move(name), std::move(exprFunc)});
+  return makeBuiltinFunction(name, -1, exprFunc);
 }
 
 ExprPtr nilPtr() {
@@ -60,13 +79,6 @@ ExprPtr falsePtr() {
 void checkParamCount(size_t paramCount, size_t expected) {
   if (paramCount != expected) {
     throw std::runtime_error("expected " + std::to_string(expected) +
-                             " arguments, got: " + std::to_string(paramCount));
-  }
-}
-
-void checkMinParamCount(size_t paramCount, size_t expected) {
-  if (paramCount < expected) {
-    throw std::runtime_error("expected at least " + std::to_string(expected) +
                              " arguments, got: " + std::to_string(paramCount));
   }
 }

@@ -75,6 +75,10 @@ using ExprPtrMap =
 
 using ExprFunction = std::function<ExprPtr(const ExprPtrSpan &)>;
 
+using UnaryFunction = std::function<ExprPtr(ExprPtr)>;
+
+using UnaryBooleanFunction = std::function<bool(ExprPtr)>;
+
 using BinaryIntFunction =
     std::function<std::int64_t(std::int64_t, std::int64_t)>;
 
@@ -83,6 +87,7 @@ using VariadicIntFunction =
 
 struct BuiltinFunction {
   std::string name;
+  int arity;
   ExprFunction value;
 };
 
@@ -134,12 +139,15 @@ struct MetaData {
   ExprPtr value;
 };
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name, ExprFunction func);
-
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+std::shared_ptr<Expr> makeBuiltinFunction(std::string name, int arity,
+                                          ExprFunction func);
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+                                          UnaryFunction func);
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
+                                          UnaryBooleanFunction func);
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           BinaryIntFunction func);
-
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name,
+std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           VariadicIntFunction func);
 
 ExprPtr nilPtr();
@@ -147,5 +155,4 @@ ExprPtr truePtr();
 ExprPtr falsePtr();
 
 void checkParamCount(size_t paramCount, size_t expected);
-void checkMinParamCount(size_t paramCount, size_t expected);
 std::int64_t intVal(const ExprPtr &exprPtr);

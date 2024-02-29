@@ -142,7 +142,10 @@ ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
 ExprPtr Evaluator::callFunction(const ExprPtrVec &calleeAndArgs) {
   const auto &callee = calleeAndArgs[0];
   if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
-    checkMinParamCount(calleeAndArgs.size() - 1, 1);
+    auto argCount = calleeAndArgs.size() - 1;
+    if (func->arity != -1) {
+      checkParamCount(argCount, func->arity);
+    }
     const std::span<ExprPtr> args(const_cast<ExprPtrVec &>(calleeAndArgs));
     return func->value(args.subspan(1));
   }

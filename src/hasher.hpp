@@ -32,7 +32,9 @@ public:
   size_t operator()(const BuiltinFunction &func) const {
     const std::hash<std::string> strHasher;
     auto hash1 = strHasher(func.name);
-    return hash1;
+    const std::hash<int> intHasher;
+    auto hash2 = intHasher(func.arity);
+    return hash1 ^ (hash2 << 1U);
   }
   size_t operator()(const Lambda &func) const {
     const std::hash<std::string> strHasher;
