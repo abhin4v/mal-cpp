@@ -19,6 +19,8 @@ add_library(mal-tokenizer OBJECT src/tokenizer.cpp)
 add_library(mal-reader OBJECT src/reader.cpp)
 add_library(mal-printer OBJECT src/printer.cpp)
 add_library(mal-types OBJECT src/types.cpp)
+add_library(mal-equator OBJECT src/equator.cpp)
+add_library(mal-hasher OBJECT src/hasher.cpp)
 add_library(mal-evaluator OBJECT src/evaluator.cpp)
 add_library(mal-env OBJECT src/env.cpp)
 
@@ -31,6 +33,8 @@ target_link_libraries(step1_read_print PRIVATE
   mal-reader
   mal-printer
   mal-types
+  mal-equator
+  mal-hasher
   ${LINENOISE_LIBRARIES})
 
 add_executable(step2_eval src/step2_eval.cpp)
@@ -39,6 +43,8 @@ target_link_libraries(step2_eval PRIVATE
   mal-reader
   mal-printer
   mal-types
+  mal-equator
+  mal-hasher
   mal-env
   mal-evaluator
   ${LINENOISE_LIBRARIES})
@@ -49,6 +55,8 @@ target_link_libraries(step3_env PRIVATE
   mal-reader
   mal-printer
   mal-types
+  mal-equator
+  mal-hasher
   mal-env
   mal-evaluator
   ${LINENOISE_LIBRARIES})
@@ -59,6 +67,8 @@ target_link_libraries(step4_if_fn_do PRIVATE
   mal-reader
   mal-printer
   mal-types
+  mal-equator
+  mal-hasher
   mal-env
   mal-evaluator
   ${LINENOISE_LIBRARIES})

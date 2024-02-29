@@ -1,5 +1,15 @@
 #include "types.hpp"
+#include "equator.hpp"
+#include "hasher.hpp"
 #include "printer.hpp"
+
+bool ExprPtrEquals::operator()(const ExprPtr &key1, const ExprPtr &key2) const {
+  return exprEquals(*key1, *key2);
+}
+
+size_t ExprPtrHash::operator()(const ExprPtr &key) const {
+  return exprHash(*key);
+}
 
 std::shared_ptr<Expr> makeBuiltinFunction(std::string name, ExprFunction func) {
   return std::make_shared<Expr>(

@@ -62,7 +62,16 @@ using ExprPtrVec = std::vector<ExprPtr>;
 
 using ExprPtrSpan = std::span<ExprPtr, std::dynamic_extent>;
 
-using ExprPtrMap = std::unordered_map<ExprPtr, ExprPtr>;
+struct ExprPtrHash {
+  size_t operator()(const ExprPtr &key) const;
+};
+
+struct ExprPtrEquals {
+  bool operator()(const ExprPtr &key1, const ExprPtr &key2) const;
+};
+
+using ExprPtrMap =
+    std::unordered_map<ExprPtr, ExprPtr, ExprPtrHash, ExprPtrEquals>;
 
 using ExprFunction = std::function<ExprPtr(const ExprPtrSpan &)>;
 
