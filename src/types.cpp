@@ -20,7 +20,7 @@ std::shared_ptr<Expr> makeBuiltinFunction(std::string name, int arity,
 std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           UnaryFunction func) {
   auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
-    checkParamCount(args.size(), 1);
+    checkArgCount(args.size(), 1);
     return func(args[0]);
   };
 
@@ -30,7 +30,7 @@ std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
 std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           UnaryBooleanFunction func) {
   auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
-    checkParamCount(args.size(), 1);
+    checkArgCount(args.size(), 1);
     return func(args[0]) ? truePtr() : falsePtr();
   };
 
@@ -40,7 +40,7 @@ std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
 std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
                                           BinaryIntFunction func) {
   auto exprFunc = [func = std::move(func)](const ExprPtrSpan &args) {
-    checkParamCount(args.size(), 2);
+    checkArgCount(args.size(), 2);
     return std::make_shared<Expr>(Int{func(intVal(args[0]), intVal(args[1]))});
   };
 
@@ -76,10 +76,17 @@ ExprPtr falsePtr() {
   return falsePtr;
 }
 
-void checkParamCount(size_t paramCount, size_t expected) {
-  if (paramCount != expected) {
+void checkArgCount(size_t argCount, size_t expected) {
+  if (argCount != expected) {
     throw std::runtime_error("expected " + std::to_string(expected) +
-                             " arguments, got: " + std::to_string(paramCount));
+                             " arguments, got: " + std::to_string(argCount));
+  }
+}
+
+void checkMinArgCount(size_t argCount, size_t expected) {
+  if (argCount < expected) {
+    throw std::runtime_error("expected at least " + std::to_string(expected) +
+                             " arguments, got: " + std::to_string(argCount));
   }
 }
 

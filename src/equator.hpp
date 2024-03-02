@@ -60,7 +60,7 @@ public:
   bool operator()(const Vector &vector, const List &list) const {
     return equateElements(vector.value, list.value);
   }
-  bool operator()(const HashMap &hm1, const HashMap &hm2) {
+  bool operator()(const HashMap &hm1, const HashMap &hm2) const {
     if (hm1.value.size() != hm2.value.size()) {
       return false;
     }

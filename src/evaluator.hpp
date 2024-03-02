@@ -134,7 +134,7 @@ private:
 
   ExprPtr doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body);
 
-  ExprPtr callFunction(const ExprPtrVec &calleeAndArgs);
+  static ExprPtr applyFunction(const ExprPtrVec &calleeAndArgs);
 
   static std::pair<std::string, ExprPtr>
   defineBinding(Evaluator &evaluator, const EnvPtr &env,
@@ -146,5 +146,36 @@ private:
       return {name, evaluatedBindingValue};
     }
     throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
+  }
+
+  using ParamNames = std::vector<std::string>;
+
+  static void checkDupParamNames(const ParamNames &paramNames) {
+    auto dupParamNames = findDuplicates(paramNames);
+    if (!dupParamNames.empty()) {
+      std::stringstream error;
+      error << "duplicate parameter names: ";
+      for (const auto &param : dupParamNames) {
+        error << param << " ";
+      }
+      throw std::runtime_error(error.str());
+    }
+  }
+
+  static ParamNames findDuplicates(const ParamNames &paramNames) {
+    std::unordered_map<std::string, int> counts;
+    ParamNames duplicates;
+
+    for (const auto &word : paramNames) {
+      ++counts[word];
+    }
+
+    for (const auto &[key, count] : counts) {
+      if (count > 1) {
+        duplicates.push_back(key);
+      }
+    }
+
+    return duplicates;
   }
 };

@@ -95,6 +95,7 @@ class Env;
 
 struct Lambda {
   std::vector<std::string> params;
+  bool variadic;
   ExprPtr body;
   std::shared_ptr<Env> env;
 };
@@ -154,5 +155,6 @@ ExprPtr nilPtr();
 ExprPtr truePtr();
 ExprPtr falsePtr();
 
-void checkParamCount(size_t paramCount, size_t expected);
+void checkArgCount(size_t argCount, size_t expected);
+void checkMinArgCount(size_t argCount, size_t expected);
 std::int64_t intVal(const ExprPtr &exprPtr);

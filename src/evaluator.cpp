@@ -15,7 +15,7 @@ ExprPtr Evaluator::eval(const ExprPtr &exprPtr) {
   auto evaluatedExprPtr = std::visit(*this, *exprPtr);
   if (const auto *list = std::get_if<List>(&*evaluatedExprPtr)) {
     if (!list->value.empty()) {
-      return callFunction(list->value);
+      return applyFunction(list->value);
     }
   }
   return evaluatedExprPtr;
@@ -43,12 +43,12 @@ ExprPtr Evaluator::evalSpecialForm(const std::string &specialSymbol,
 }
 
 ExprPtr Evaluator::evalDefBang(const ExprPtrVec &elements) {
-  checkParamCount(elements.size() - 1, 2);
+  checkArgCount(elements.size() - 1, 2);
   return std::get<1>(defineBinding(*this, env, elements[1], elements[2]));
 }
 
 ExprPtr Evaluator::evalLetStar(const ExprPtrVec &elements) {
-  checkParamCount(elements.size() - 1, 2);
+  checkArgCount(elements.size() - 1, 2);
 
   const auto &bindingsListPtr = elements[1];
   if (const auto *bindingList = std::get_if<List>(&*bindingsListPtr)) {
@@ -129,7 +129,7 @@ ExprPtr Evaluator::evalIf(const ExprPtrVec &elements) {
 }
 
 ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
-  checkParamCount(elements.size() - 1, 2);
+  checkArgCount(elements.size() - 1, 2);
 
   if (const auto *params = std::get_if<List>(&*elements[1])) {
     return doEvalFnStar(params->value, elements[2]);
@@ -143,11 +143,25 @@ ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
 }
 
 ExprPtr Evaluator::doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body) {
-  std::vector<std::string> paramNames;
+  ParamNames paramNames;
   paramNames.reserve(params.size());
+  bool variadic{false};
+  int variadicParamsCount{0};
   for (const auto &param : params) {
     if (const auto *paramName = std::get_if<Symbol>(&*param)) {
+      if (paramName->value == "&") {
+        variadic = true;
+        continue;
+      }
+      if (variadic && variadicParamsCount == 1) {
+        throw std::runtime_error(
+            "more than one variadic function params specified");
+      }
+
       paramNames.push_back(paramName->value);
+      if (variadic) {
+        variadicParamsCount++;
+      }
       continue;
     }
 
@@ -155,16 +169,19 @@ ExprPtr Evaluator::doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body) {
                              prStr(param, true));
   }
 
-  return std::make_shared<Expr>(
-      Lambda{std::move(paramNames), body, std::make_shared<Env>(Env(env))});
+  checkDupParamNames(paramNames);
+  return std::make_shared<Expr>(Lambda{.params = std::move(paramNames),
+                                       .variadic = variadic,
+                                       .body = body,
+                                       .env = std::make_shared<Env>(Env(env))});
 }
 
-ExprPtr Evaluator::callFunction(const ExprPtrVec &calleeAndArgs) {
+ExprPtr Evaluator::applyFunction(const ExprPtrVec &calleeAndArgs) {
   const auto &callee = calleeAndArgs[0];
   if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
     auto argCount = calleeAndArgs.size() - 1;
     if (func->arity != -1) {
-      checkParamCount(argCount, func->arity);
+      checkArgCount(argCount, func->arity);
     }
     const std::span<ExprPtr> args(const_cast<ExprPtrVec &>(calleeAndArgs));
     return func->value(args.subspan(1));
@@ -172,11 +189,30 @@ ExprPtr Evaluator::callFunction(const ExprPtrVec &calleeAndArgs) {
 
   if (const auto *lambda = std::get_if<Lambda>(&*callee)) {
     auto paramCount = lambda->params.size();
-    checkParamCount(calleeAndArgs.size() - 1, paramCount);
+    auto argCount = calleeAndArgs.size() - 1;
+    if (lambda->variadic) {
+      checkMinArgCount(argCount, paramCount - 1);
+    } else {
+      checkArgCount(argCount, paramCount);
+    }
 
     Env lambdaEnv(lambda->env);
-    for (int i = 0; i < paramCount; i++) {
-      lambdaEnv.set(lambda->params[i], eval(calleeAndArgs[i + 1]));
+    ExprPtrVec variadicArgs{lambdaEnv.get("list")};
+    for (int i = 0; i < argCount; i++) {
+      const auto &arg = calleeAndArgs[i + 1];
+      if (lambda->variadic) {
+        if (i < paramCount - 1) {
+          lambdaEnv.set(lambda->params[i], arg);
+        } else {
+          variadicArgs.push_back(arg);
+        }
+      } else {
+        lambdaEnv.set(lambda->params[i], arg);
+      }
+    }
+    if (lambda->variadic) {
+      auto arg = std::make_shared<Expr>(List{variadicArgs});
+      lambdaEnv.set(lambda->params[paramCount - 1], arg);
     }
 
     Evaluator lambdaEvaluator(std::make_shared<Env>(lambdaEnv));
