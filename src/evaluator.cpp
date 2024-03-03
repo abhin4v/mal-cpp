@@ -73,19 +73,21 @@ ExprPtr Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
   }
 
   Env letEnv(this->env);
+  auto letEnvPtr = std::make_shared<Env>(letEnv);
+  Evaluator letEvaluator(letEnvPtr);
   Evaluator *evaluator = this;
 
   std::unordered_map<std::string, ExprPtr> bindings;
   bindings.reserve(bindingListSize / 2);
 
   for (auto i = 0; i < bindingListSize; i += 2) {
-    auto letEnvPtr = std::make_shared<Env>(letEnv);
     auto nameValue = defineBinding(*evaluator, letEnvPtr, bindingList[i],
                                    bindingList[i + 1]);
     bindings[nameValue.first] = nameValue.second;
-    Evaluator letEvaluator(letEnvPtr);
     evaluator = &letEvaluator;
     letEnv = Env(letEnvPtr);
+    letEnvPtr = std::make_shared<Env>(letEnv);
+    letEvaluator = Evaluator(letEnvPtr);
   }
 
   for (const auto &[name, value] : bindings) {
