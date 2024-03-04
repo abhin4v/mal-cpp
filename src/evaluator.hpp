@@ -12,12 +12,19 @@
 #include <unordered_set>
 #include <utility>
 
+struct EvalResult {
+  bool evaluated;
+  EnvPtr env;
+  ExprPtr result;
+};
+
 class Evaluator {
 private:
   EnvPtr env;
 
 public:
   explicit Evaluator(EnvPtr env) : env(std::move(env)) {}
+
   ExprPtr operator()(const Nil &nil) const {
     return std::make_shared<Expr>(nil);
   }
@@ -95,14 +102,19 @@ public:
     return std::make_shared<Expr>(HashMap{map});
   }
 
-  [[nodiscard]] ExprPtr eval(const ExprPtr &exprPtr);
+  ExprPtr trampoliningEval(const ExprPtr &exprPtr);
+
+  ExprPtr eval(const ExprPtr &exprPtr);
 
 private:
+  EvalResult doEval(const ExprPtr &exprPtr);
+
   void evalElements(const ExprPtrVec &elements, ExprPtrVec &evaledElements) {
+    const auto &that = this;
     evaledElements.reserve(elements.size());
     std::transform(elements.begin(), elements.end(),
                    std::back_inserter(evaledElements),
-                   [&](const auto &elemPtr) { return eval(elemPtr); });
+                   [&](const auto &elemPtr) { return that->eval(elemPtr); });
   }
 
   static std::optional<std::string> firstSymbolOfList(const ExprPtr &exprPtr) {
@@ -116,25 +128,25 @@ private:
     return std::nullopt;
   }
 
-  ExprPtr evalSpecialForm(const std::string &specialSymbol,
-                          const ExprPtrVec &elements);
+  EvalResult evalSpecialForm(const std::string &specialSymbol,
+                             const ExprPtrVec &elements);
 
   ExprPtr evalDefBang(const ExprPtrVec &elements);
 
-  ExprPtr evalLetStar(const ExprPtrVec &elements);
+  EvalResult evalLetStar(const ExprPtrVec &elements);
 
-  ExprPtr doEvalLetStar(const ExprPtrVec &bindingList,
-                        const ExprPtr &letBodyPtr);
+  EvalResult doEvalLetStar(const ExprPtrVec &bindingList,
+                           const ExprPtr &letBodyPtr);
 
-  ExprPtr evalDo(const ExprPtrVec &elements);
+  EvalResult evalDo(const ExprPtrVec &elements);
 
-  ExprPtr evalIf(const ExprPtrVec &elements);
+  EvalResult evalIf(const ExprPtrVec &elements);
 
   ExprPtr evalFnStar(const ExprPtrVec &elements);
 
   ExprPtr doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body);
 
-  static ExprPtr applyFunction(const ExprPtrVec &calleeAndArgs);
+  EvalResult applyFunction(const ExprPtrVec &calleeAndArgs);
 
   static std::pair<std::string, ExprPtr>
   defineBinding(Evaluator &evaluator, const EnvPtr &env,
