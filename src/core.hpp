@@ -2,12 +2,15 @@
 
 #include "equator.hpp"
 #include "printer.hpp"
+#include "reader.hpp"
 #include "types.hpp"
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <numeric>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <variant>
 
@@ -18,8 +21,7 @@ private:
     builtins.emplace(
         "+",
         makeBuiltinFunction("add", [](const std::vector<std::int64_t> &args) {
-          auto ret = std::accumulate(args.begin(), args.end(), 0LL);
-          return ret;
+          return std::accumulate(args.begin(), args.end(), 0LL);
         }));
     builtins.emplace(
         "*",
@@ -48,6 +50,10 @@ private:
     builtins.emplace(
         ">=", makeBuiltinFunction(">=", 2, [](const ExprPtrSpan &args) {
           return intVal(args[0]) >= intVal(args[1]) ? truePtr() : falsePtr();
+        }));
+    builtins.emplace(
+        "=", makeBuiltinFunction("=", 2, [](const ExprPtrSpan &args) {
+          return exprEquals(*args[0], *args[1]) ? truePtr() : falsePtr();
         }));
     builtins.emplace(
         "pr-str",
@@ -86,9 +92,50 @@ private:
         "list", makeBuiltinFunction("list", -1, [](const ExprPtrSpan &args) {
           return std::make_shared<Expr>(List{{args.begin(), args.end()}});
         }));
+    builtins.emplace("read-string",
+                     makeBuiltinFunction("read-string", [](const ExprPtr &arg) {
+                       if (const auto *str = std::get_if<String>(&*arg)) {
+                         return readStr(str->value);
+                       }
+
+                       throw std::runtime_error("not a string: " +
+                                                prStr(arg, true));
+                     }));
     builtins.emplace(
-        "=", makeBuiltinFunction("=", 2, [](const ExprPtrSpan &args) {
-          return exprEquals(*args[0], *args[1]) ? truePtr() : falsePtr();
+        "slurp", makeBuiltinFunction("slurp", [](const ExprPtr &arg) {
+          if (const auto *str = std::get_if<String>(&*arg)) {
+            const std::ifstream file(str->value);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            return std::make_shared<Expr>(String{buffer.str()});
+          }
+
+          throw std::runtime_error("not a string: " + prStr(arg, true));
+        }));
+    builtins.emplace("atom",
+                     makeBuiltinFunction("atom", [](const ExprPtr &arg) {
+                       return std::make_shared<Expr>(Atom{arg});
+                     }));
+    builtins.emplace("atom?",
+                     makeBuiltinFunction("atom", [](const ExprPtr &arg) {
+                       return std::holds_alternative<Atom>(*arg);
+                     }));
+    builtins.emplace(
+        "deref", makeBuiltinFunction("deref", [](const ExprPtr &arg) {
+          if (const auto *atom = std::get_if<Atom>(&*arg)) {
+            return atom->value;
+          }
+
+          throw std::runtime_error("not an atom: " + prStr(arg, true));
+        }));
+    builtins.emplace(
+        "reset!", makeBuiltinFunction("reset!", 2, [](const ExprPtrSpan &args) {
+          if (auto *atom = std::get_if<Atom>(&*args[0])) {
+            atom->value = args[1];
+            return args[1];
+          }
+
+          throw std::runtime_error("not an atom: " + prStr(args[0], true));
         }));
 
     return builtins;

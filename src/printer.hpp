@@ -77,6 +77,10 @@ public:
            ")";
   }
 
+  std::string operator()(const Atom &expr) const {
+    return "(atom " + prExprPtr(expr.value) + ")";
+  }
+
   std::string operator()(const BuiltinFunction &builtinFunc) const {
     return "#<" + builtinFunc.name + ">";
   }

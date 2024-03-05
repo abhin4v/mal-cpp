@@ -25,14 +25,12 @@ private:
 public:
   explicit Evaluator(EnvPtr env) : env(std::move(env)) {}
 
-  ExprPtr operator()(const Nil &nil) const {
-    return std::make_shared<Expr>(nil);
-  }
+  ExprPtr operator()(const Nil & /*nil*/) const { return nilPtr(); }
   ExprPtr operator()(const Int &num) const {
     return std::make_shared<Expr>(num);
   }
   ExprPtr operator()(const Bool &boolean) const {
-    return std::make_shared<Expr>(boolean);
+    return boolean == Bool::TRUE ? truePtr() : falsePtr();
   }
   ExprPtr operator()(const String &str) const {
     return std::make_shared<Expr>(str);
@@ -58,13 +56,18 @@ public:
   ExprPtr operator()(const SpliceUnquote &expr) const {
     return std::make_shared<Expr>(expr);
   }
-  ExprPtr operator()(const Deref &expr) const {
+  ExprPtr operator()(const Deref &expr) {
+    auto evaledExpr = this->eval(expr.value);
+    if (const auto *atom = std::get_if<Atom>(&*evaledExpr)) {
+      return atom->value;
+    }
+
+    throw std::runtime_error("not an atom: " + prStr(expr.value, true));
+  }
+  ExprPtr operator()(const Atom &expr) const {
     return std::make_shared<Expr>(expr);
   }
-
-  ExprPtr operator()(const MetaData &expr) {
-    return std::visit(*this, *(expr.value));
-  }
+  ExprPtr operator()(const MetaData &expr) { return this->eval(expr.value); }
 
   ExprPtr operator()(const Symbol &sym) const { return env->get(sym.value); }
 
@@ -146,7 +149,7 @@ private:
 
   ExprPtr doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body);
 
-  EvalResult applyFunction(const ExprPtrVec &calleeAndArgs);
+  static EvalResult applyFunction(const ExprPtrVec &calleeAndArgs);
 
   static std::pair<std::string, ExprPtr>
   defineBinding(Evaluator &evaluator, const EnvPtr &env,

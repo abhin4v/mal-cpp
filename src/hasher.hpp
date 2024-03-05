@@ -47,6 +47,7 @@ public:
     const auto bodyHash = hashExprPtr(func.body);
     return hash ^ (bodyHash << 1U);
   }
+
   size_t operator()(const Quote &expr) const { return hashExprPtr(expr.value); }
   size_t operator()(const QuasiQuote &expr) const {
     return hashExprPtr(expr.value);
@@ -61,6 +62,8 @@ public:
   size_t operator()(const MetaData &expr) const {
     return hashExprPtr(expr.value);
   }
+  size_t operator()(const Atom &atom) const { return hashExprPtr(atom.value); }
+
   size_t operator()(const List &list) const {
     return std::accumulate(list.value.begin(), list.value.end(), 0,
                            [&](size_t hash, const auto &element) {

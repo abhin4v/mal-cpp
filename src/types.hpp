@@ -52,11 +52,13 @@ struct Deref;
 
 struct MetaData;
 
+struct Atom;
+
 using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
                           HashMap, Quote, QuasiQuote, Unquote, SpliceUnquote,
-                          Deref, MetaData, BuiltinFunction, Lambda>;
+                          Deref, MetaData, BuiltinFunction, Lambda, Atom>;
 
-using ExprPtr = std::shared_ptr<const Expr>;
+using ExprPtr = std::shared_ptr<Expr>;
 
 using ExprPtrVec = std::vector<ExprPtr>;
 
@@ -140,16 +142,15 @@ struct MetaData {
   ExprPtr value;
 };
 
-std::shared_ptr<Expr> makeBuiltinFunction(std::string name, int arity,
-                                          ExprFunction func);
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
-                                          UnaryFunction func);
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
-                                          UnaryBooleanFunction func);
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
-                                          BinaryIntFunction func);
-std::shared_ptr<Expr> makeBuiltinFunction(const std::string &name,
-                                          VariadicIntFunction func);
+struct Atom {
+  ExprPtr value;
+};
+
+ExprPtr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
+ExprPtr makeBuiltinFunction(const std::string &name, UnaryFunction func);
+ExprPtr makeBuiltinFunction(const std::string &name, UnaryBooleanFunction func);
+ExprPtr makeBuiltinFunction(const std::string &name, BinaryIntFunction func);
+ExprPtr makeBuiltinFunction(const std::string &name, VariadicIntFunction func);
 
 ExprPtr nilPtr();
 ExprPtr truePtr();
