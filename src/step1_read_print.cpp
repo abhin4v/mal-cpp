@@ -5,11 +5,11 @@
 #include <ostream>
 #include <sstream>
 
-ExprPtr READ(const std::string &input) { return readStr(input); }
+Expr READ(const std::string &input) { return readStr(input); }
 
-ExprPtr EVAL(const ExprPtr &ast) { return ast; }
+Expr EVAL(const Expr &ast) { return ast; }
 
-std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
+std::string PRINT(const Expr &value) { return prStr(value, true); }
 
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
 

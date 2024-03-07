@@ -18,13 +18,12 @@ public:
 
   bool eof() { return !peek().has_value(); }
 
-  ExprPtr readForm();
+  Expr readForm();
 
 private:
-  ExprPtrVec readList(const Token &startDelimToken,
-                      TokenType endDelimTokenType);
+  ExprVec readList(const Token &startDelimToken, TokenType endDelimTokenType);
 
-  ExprPtr readAtom();
+  Expr readAtom();
 
   static std::int64_t parseUnsignedInteger(const std::string &lexeme) {
     std::int64_t num{0};
@@ -69,4 +68,4 @@ private:
   static const int DECIMAL_BASE = 10;
 };
 
-ExprPtr readStr(const std::string &input);
+Expr readStr(const std::string &input);

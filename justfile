@@ -74,7 +74,7 @@ test-all: (build "all")
   echo;
 
   echo "=============================  CPPCHECK  ============================="
-  cppcheck --enable=all --disable=missingInclude --inconclusive src/*
+  cppcheck --enable=all --disable=missingInclude --inconclusive --inline-suppr src/*
 
   echo "============================= CLANG-TIDY ============================="
   clang-tidy -p compile_commands.json src/*

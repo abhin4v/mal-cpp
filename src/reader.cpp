@@ -12,11 +12,11 @@ void removeComments(std::vector<Token> &tokens) {
 }
 } // namespace
 
-ExprPtr readStr(const std::string &input) {
+Expr readStr(const std::string &input) {
   auto tokens = tokenize(input);
   removeComments(tokens);
   if (tokens.empty()) {
-    return nilPtr();
+    return Nil::NIL;
   }
 
   Reader reader(tokens);
@@ -27,19 +27,17 @@ ExprPtr readStr(const std::string &input) {
   return ret;
 }
 
-ExprPtr Reader::readForm() {
+Expr Reader::readForm() {
   auto oToken = peek();
 
   if (oToken.has_value()) {
     auto token = oToken.value();
     switch (token.type) {
     case TokenType::LEFT_PAREN:
-      return std::make_shared<Expr>(
-          List{readList(token, TokenType::RIGHT_PAREN)});
+      return List{readList(token, TokenType::RIGHT_PAREN)};
 
     case TokenType::LEFT_BRACKET:
-      return std::make_shared<Expr>(
-          Vector{readList(token, TokenType::RIGHT_BRACKET)});
+      return Vector{readList(token, TokenType::RIGHT_BRACKET)};
 
     case TokenType::LEFT_BRACE: {
       auto elements = readList(token, TokenType::RIGHT_BRACE);
@@ -48,44 +46,44 @@ ExprPtr Reader::readForm() {
         throw std::runtime_error("odd number of elements in hash-map");
       }
 
-      ExprPtrMap map;
+      ExprMap map;
       map.reserve(elementCount / 2);
 
       for (auto i = 0; i < elementCount; i += 2) {
         map[elements[i]] = elements[i + 1];
       }
 
-      return std::make_shared<Expr>(HashMap{map});
+      return HashMap{map};
     }
 
     case TokenType::QUOTE: {
       advance();
-      return std::make_shared<Expr>(Quote{readForm()});
+      return Quote{readForm()};
     }
 
     case TokenType::BACKQUOTE: {
       advance();
-      return std::make_shared<Expr>(QuasiQuote{readForm()});
+      return QuasiQuote{readForm()};
     }
 
     case TokenType::TILDE: {
       advance();
-      return std::make_shared<Expr>(Unquote{readForm()});
+      return Unquote{readForm()};
     }
 
     case TokenType::TILDE_AT: {
       advance();
-      return std::make_shared<Expr>(SpliceUnquote{readForm()});
+      return SpliceUnquote{readForm()};
     }
 
     case TokenType::AT: {
       advance();
-      return std::make_shared<Expr>(Deref{readForm()});
+      return Deref{readForm()};
     }
 
     case TokenType::CARET: {
       advance();
-      return std::make_shared<Expr>(MetaData{readForm(), readForm()});
+      return MetaData{readForm(), readForm()};
     }
 
     default:
@@ -96,10 +94,10 @@ ExprPtr Reader::readForm() {
   throw std::runtime_error("no tokens");
 }
 
-ExprPtrVec Reader::readList(const Token &startDelimToken,
-                            TokenType endDelimTokenType) {
+ExprVec Reader::readList(const Token &startDelimToken,
+                         TokenType endDelimTokenType) {
   expect(startDelimToken);
-  ExprPtrVec elements;
+  ExprVec elements;
 
   while (true) {
     auto oToken = peek();
@@ -124,34 +122,34 @@ static const auto TRUE_LEXEME = "true";
 static const auto FALSE_LEXEME = "false";
 static const auto KEYWORD_SIGIL = ':';
 
-ExprPtr Reader::readAtom() {
+Expr Reader::readAtom() {
   auto token = advance();
   auto lexeme = token.lexeme;
   switch (token.type) {
   case TokenType::STRING:
-    return std::make_shared<Expr>(String{token.lexeme});
+    return String{token.lexeme};
   case TokenType::ATOM: {
     auto chr = lexeme[0];
     if (std::isdigit(chr) != 0) {
-      return std::make_shared<Expr>(Int{parseUnsignedInteger(lexeme)});
+      return Int{parseUnsignedInteger(lexeme)};
     }
     if (chr == '-' && lexeme.size() >= 2 && std::isdigit(lexeme[1]) != 0) {
       auto num = parseUnsignedInteger(lexeme.substr(1));
-      return std::make_shared<Expr>(Int{-num});
+      return Int{-num};
     }
     if (lexeme == NIL_LEXEME) {
-      return nilPtr();
+      return Nil::NIL;
     }
     if (lexeme == TRUE_LEXEME) {
-      return truePtr();
+      return Bool::TRUE;
     }
     if (lexeme == FALSE_LEXEME) {
-      return falsePtr();
+      return Bool::FALSE;
     }
     if (chr == KEYWORD_SIGIL) {
-      return std::make_shared<Expr>(Keyword{lexeme.substr(1)});
+      return Keyword{lexeme.substr(1)};
     }
-    return std::make_shared<Expr>(Symbol{lexeme});
+    return Symbol{lexeme};
   }
   default:
     std::stringstream error;

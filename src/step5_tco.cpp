@@ -11,13 +11,13 @@
 #include <ostream>
 #include <sstream>
 
-ExprPtr READ(const std::string &input) { return readStr(input); }
+Expr READ(const std::string &input) { return readStr(input); }
 
-ExprPtr EVAL(Evaluator &evaluator, const ExprPtr &ast) {
+Expr EVAL(Evaluator &evaluator, const Expr &ast) {
   return evaluator.trampoliningEval(ast);
 }
 
-std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
+std::string PRINT(const Expr &value) { return prStr(value, true); }
 
 std::string rep(Evaluator &evaluator, const std::string &input) {
   return PRINT(EVAL(evaluator, READ(input)));

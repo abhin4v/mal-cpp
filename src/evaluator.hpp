@@ -15,7 +15,7 @@
 struct EvalResult {
   bool evaluated;
   EnvPtr env;
-  ExprPtr result;
+  Expr result;
 };
 
 class Evaluator {
@@ -25,105 +25,87 @@ private:
 public:
   explicit Evaluator(EnvPtr env) : env(std::move(env)) {}
 
-  ExprPtr operator()(const Nil & /*nil*/) const { return nilPtr(); }
-  ExprPtr operator()(const Int &num) const {
-    return std::make_shared<Expr>(num);
-  }
-  ExprPtr operator()(const Bool &boolean) const {
-    return boolean == Bool::TRUE ? truePtr() : falsePtr();
-  }
-  ExprPtr operator()(const String &str) const {
-    return std::make_shared<Expr>(str);
-  }
-  ExprPtr operator()(const Keyword &kwd) const {
-    return std::make_shared<Expr>(kwd);
-  }
-  ExprPtr operator()(const BuiltinFunction &func) const {
-    return std::make_shared<Expr>(func);
-  }
-  ExprPtr operator()(const Lambda &lambda) const {
-    return std::make_shared<Expr>(lambda);
-  }
-  ExprPtr operator()(const Quote &expr) const {
-    return std::make_shared<Expr>(expr);
-  }
-  ExprPtr operator()(const QuasiQuote &expr) const {
-    return std::make_shared<Expr>(expr);
-  }
-  ExprPtr operator()(const Unquote &expr) const {
-    return std::make_shared<Expr>(expr);
-  }
-  ExprPtr operator()(const SpliceUnquote &expr) const {
-    return std::make_shared<Expr>(expr);
-  }
-  ExprPtr operator()(const Deref &expr) {
+  Expr operator()(const Nil &nil) const { return nil; }
+  Expr operator()(const Int &num) const { return num; }
+  Expr operator()(const Bool &boolean) const { return boolean; }
+  Expr operator()(const String &str) const { return str; }
+  Expr operator()(const Keyword &kwd) const { return kwd; }
+  Expr operator()(const BuiltinFunction &func) const { return func; }
+  Expr operator()(const Lambda &lambda) const { return lambda; }
+  Expr operator()(const Quote &expr) const { return expr; }
+  Expr operator()(const QuasiQuote &expr) const { return expr; }
+  Expr operator()(const Unquote &expr) const { return expr; }
+  Expr operator()(const SpliceUnquote &expr) const { return expr; }
+  Expr operator()(const Deref &expr) {
     auto evaledExpr = this->eval(expr.value);
-    if (const auto *atom = std::get_if<Atom>(&*evaledExpr)) {
-      return atom->value;
+    if (const auto *atom = std::get_if<Box<Atom>>(&evaledExpr)) {
+      return (*atom)->value;
     }
 
     throw std::runtime_error("not an atom: " + prStr(expr.value, true));
   }
-  ExprPtr operator()(const Atom &expr) const {
-    return std::make_shared<Expr>(expr);
+  Expr operator()(const Atom &expr) const { return expr; }
+  Expr operator()(const MetaData &expr) { return this->eval(expr.value); }
+
+  Expr operator()(const Symbol &sym) const {
+    return env->get(sym.value).getRaw();
   }
-  ExprPtr operator()(const MetaData &expr) { return this->eval(expr.value); }
 
-  ExprPtr operator()(const Symbol &sym) const { return env->get(sym.value); }
-
-  ExprPtr operator()(const List &list) {
+  Expr operator()(const List &list) {
     auto elements = list.value;
     if (elements.empty()) {
-      return std::make_shared<Expr>(list);
+      return list;
     }
 
-    ExprPtrVec evaledElements;
+    ExprVec evaledElements;
     evalElements(elements, evaledElements);
-    return std::make_shared<Expr>(List{evaledElements});
+    return List{evaledElements};
   }
 
-  ExprPtr operator()(const Vector &vector) {
+  Expr operator()(const Vector &vector) {
     auto elements = vector.value;
     if (vector.value.empty()) {
-      return std::make_shared<Expr>(vector);
+      return vector;
     }
 
-    ExprPtrVec evaledElements;
+    ExprVec evaledElements;
     evalElements(elements, evaledElements);
-    return std::make_shared<Expr>(Vector{evaledElements});
+    return Vector{evaledElements};
   }
 
-  ExprPtr operator()(const HashMap &hashmap) {
+  Expr operator()(const HashMap &hashmap) {
     if (hashmap.value.empty()) {
-      return std::make_shared<Expr>(hashmap);
+      return hashmap;
     }
 
-    ExprPtrMap map;
+    ExprMap map;
     for (const auto &[key, value] : hashmap.value) {
       map[eval(key)] = eval(value);
     }
-    return std::make_shared<Expr>(HashMap{map});
+    return HashMap{map};
   }
 
-  ExprPtr trampoliningEval(const ExprPtr &exprPtr);
+  Expr trampoliningEval(const Expr &expr);
 
-  ExprPtr eval(const ExprPtr &exprPtr);
+  Expr eval(const Expr &expr);
 
 private:
-  EvalResult doEval(const ExprPtr &exprPtr);
+  EvalResult doEval(const Expr &expr);
 
-  void evalElements(const ExprPtrVec &elements, ExprPtrVec &evaledElements) {
+  void evalElements(const ExprVec &elements, ExprVec &evaledElements) {
     const auto &that = this;
     evaledElements.reserve(elements.size());
     std::transform(elements.begin(), elements.end(),
                    std::back_inserter(evaledElements),
-                   [&](const auto &elemPtr) { return that->eval(elemPtr); });
+                   [&](const auto &elem) { return that->eval(elem); });
   }
 
-  static std::optional<std::string> firstSymbolOfList(const ExprPtr &exprPtr) {
-    if (const auto *list = std::get_if<List>(&*exprPtr)) {
-      if (!list->value.empty()) {
-        if (const auto *first = std::get_if<Symbol>(&*(list->value[0]))) {
+  static std::optional<std::string> firstSymbolOfList(const Expr &expr) {
+    if (const auto *list = std::get_if<Box<List>>(&expr)) {
+      const auto &elements = (*list)->value;
+      if (!elements.empty()) {
+        // NOLINTNEXTLINE(readability-container-data-pointer)
+        if (const auto *first = std::get_if<Symbol>(&elements[0])) {
           return std::make_optional(first->value);
         }
       }
@@ -132,35 +114,35 @@ private:
   }
 
   EvalResult evalSpecialForm(const std::string &specialSymbol,
-                             const ExprPtrVec &elements);
+                             const ExprVec &elements);
 
-  ExprPtr evalDefBang(const ExprPtrVec &elements);
+  Expr evalDefBang(const ExprVec &elements);
 
-  EvalResult evalLetStar(const ExprPtrVec &elements);
+  EvalResult evalLetStar(const ExprVec &elements);
 
-  EvalResult doEvalLetStar(const ExprPtrVec &bindingList,
-                           const ExprPtr &letBodyPtr);
+  EvalResult doEvalLetStar(const ExprVec &bindingList, const Expr &letBody);
 
-  EvalResult evalDo(const ExprPtrVec &elements);
+  EvalResult evalDo(const ExprVec &elements);
 
-  EvalResult evalIf(const ExprPtrVec &elements);
+  EvalResult evalIf(const ExprVec &elements);
 
-  ExprPtr evalFnStar(const ExprPtrVec &elements);
+  Expr evalFnStar(const ExprVec &elements);
 
-  ExprPtr doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body);
+  Expr doEvalFnStar(const ExprVec &params, const Expr &body);
 
-  static EvalResult applyFunction(const ExprPtrVec &calleeAndArgs);
+  static EvalResult applyFunction(const ExprVec &calleeAndArgs);
 
-  static std::pair<std::string, ExprPtr>
-  defineBinding(Evaluator &evaluator, const EnvPtr &env,
-                const ExprPtr &bindingNamePtr, const ExprPtr &bindingValuePtr) {
-    if (const auto *bindingName = std::get_if<Symbol>(&*bindingNamePtr)) {
-      auto evaluatedBindingValue = evaluator.eval(bindingValuePtr);
+  static std::pair<std::string, Expr> defineBinding(Evaluator &evaluator,
+                                                    const EnvPtr &env,
+                                                    const Expr &bindingNameExpr,
+                                                    const Expr &bindingValue) {
+    if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
+      auto evaluatedBindingValue = evaluator.eval(bindingValue);
       auto name = bindingName->value;
       env->set(name, evaluatedBindingValue);
       return {name, evaluatedBindingValue};
     }
-    throw std::runtime_error("not a symbol: " + prStr(bindingNamePtr, true));
+    throw std::runtime_error("not a symbol: " + prStr(bindingNameExpr, true));
   }
 
   using ParamNames = std::vector<std::string>;

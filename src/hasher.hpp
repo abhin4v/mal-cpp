@@ -44,50 +44,46 @@ public:
                           return hash ^ (strHasher(param) << 1U);
                         });
 
-    const auto bodyHash = hashExprPtr(func.body);
+    const auto bodyHash = hashExpr(func.body);
     return hash ^ (bodyHash << 1U);
   }
 
-  size_t operator()(const Quote &expr) const { return hashExprPtr(expr.value); }
+  size_t operator()(const Quote &expr) const { return hashExpr(expr.value); }
   size_t operator()(const QuasiQuote &expr) const {
-    return hashExprPtr(expr.value);
+    return hashExpr(expr.value);
   }
-  size_t operator()(const Unquote &expr) const {
-    return hashExprPtr(expr.value);
-  }
+  size_t operator()(const Unquote &expr) const { return hashExpr(expr.value); }
   size_t operator()(const SpliceUnquote &expr) const {
-    return hashExprPtr(expr.value);
+    return hashExpr(expr.value);
   }
-  size_t operator()(const Deref &expr) const { return hashExprPtr(expr.value); }
-  size_t operator()(const MetaData &expr) const {
-    return hashExprPtr(expr.value);
-  }
-  size_t operator()(const Atom &atom) const { return hashExprPtr(atom.value); }
+  size_t operator()(const Deref &expr) const { return hashExpr(expr.value); }
+  size_t operator()(const MetaData &expr) const { return hashExpr(expr.value); }
+  size_t operator()(const Atom &atom) const { return hashExpr(atom.value); }
 
   size_t operator()(const List &list) const {
     return std::accumulate(list.value.begin(), list.value.end(), 0,
                            [&](size_t hash, const auto &element) {
-                             return hash ^ (hashExprPtr(element) << 1U);
+                             return hash ^ (hashExpr(element) << 1U);
                            });
   }
   size_t operator()(const Vector &vector) const {
     return std::accumulate(vector.value.begin(), vector.value.end(), 0,
                            [&](size_t hash, const auto &element) {
-                             return hash ^ (hashExprPtr(element) << 1U);
+                             return hash ^ (hashExpr(element) << 1U);
                            });
   }
   size_t operator()(const HashMap &hashmap) const {
     size_t hash{0};
     for (const auto &[key, value] : hashmap.value) {
-      hash = hash ^ (hashExprPtr(key) << 1U);
-      hash = hash ^ (hashExprPtr(value) << 1U);
+      hash = hash ^ (hashExpr(key) << 1U);
+      hash = hash ^ (hashExpr(value) << 1U);
     }
     return hash;
   }
 
 private:
-  [[nodiscard]] size_t hashExprPtr(const ExprPtr &expr) const {
-    return std::visit(*this, *expr);
+  [[nodiscard]] size_t hashExpr(const Expr &expr) const {
+    return std::visit(*this, expr);
   }
 };
 

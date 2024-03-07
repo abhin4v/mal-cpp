@@ -7,6 +7,35 @@
 #include <utility>
 #include <vector>
 
+template <typename T> class Box {
+public:
+  Box() = delete;
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
+  Box(T value) // cppcheck-suppress noExplicitConstructor
+      : ptr(std::make_shared<T>(std::move(value))) {}
+
+  template <class U>
+  using enabler = std::enable_if_t<std::is_same_v<std::decay_t<U>, T>>;
+  template <typename U, enabler<U>>
+  // NOLINTBEGIN(google-explicit-constructor, hicpp-explicit-conversions,
+  // bugprone-forwarding-reference-overload)
+  Box(U &&value) // cppcheck-suppress noExplicitConstructor
+      : ptr(std::make_shared<U>(std::forward<U>(value))) {}
+  // NOLINTEND(google-explicit-constructor, hicpp-explicit-conversions,
+  // bugprone-forwarding-reference-overload)
+
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
+  operator T &() { return *ptr; }
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
+  operator const T &() const { return *ptr; }
+
+  T *operator->() const { return &*ptr; }
+  [[nodiscard]] T &getRaw() const { return *ptr; }
+
+private:
+  std::shared_ptr<T> ptr;
+};
+
 enum class Nil { NIL };
 
 struct Int {
@@ -54,32 +83,33 @@ struct MetaData;
 
 struct Atom;
 
-using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, List, Vector,
-                          HashMap, Quote, QuasiQuote, Unquote, SpliceUnquote,
-                          Deref, MetaData, BuiltinFunction, Lambda, Atom>;
+using Expr =
+    std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
+                 Box<Vector>, Box<HashMap>, Box<Quote>, Box<QuasiQuote>,
+                 Box<Unquote>, Box<SpliceUnquote>, Box<Deref>, Box<MetaData>,
+                 Box<BuiltinFunction>, Box<Lambda>, Box<Atom>>;
 
-using ExprPtr = std::shared_ptr<Expr>;
+using ExprPtr = Box<Expr>;
 
-using ExprPtrVec = std::vector<ExprPtr>;
+using ExprVec = std::vector<Expr>;
 
-using ExprPtrSpan = std::span<ExprPtr, std::dynamic_extent>;
+using ExprSpan = std::span<Expr, std::dynamic_extent>;
 
-struct ExprPtrHash {
-  size_t operator()(const ExprPtr &key) const;
+struct ExprHash {
+  size_t operator()(const Expr &key) const;
 };
 
-struct ExprPtrEquals {
-  bool operator()(const ExprPtr &key1, const ExprPtr &key2) const;
+struct ExprEquals {
+  bool operator()(const Expr &key1, const Expr &key2) const;
 };
 
-using ExprPtrMap =
-    std::unordered_map<ExprPtr, ExprPtr, ExprPtrHash, ExprPtrEquals>;
+using ExprMap = std::unordered_map<Expr, Expr, ExprHash, ExprEquals>;
 
-using ExprFunction = std::function<ExprPtr(const ExprPtrSpan &)>;
+using ExprFunction = std::function<Expr(const ExprSpan &)>;
 
-using UnaryFunction = std::function<ExprPtr(ExprPtr)>;
+using UnaryFunction = std::function<Expr(const Expr &)>;
 
-using UnaryBooleanFunction = std::function<bool(ExprPtr)>;
+using UnaryBooleanFunction = std::function<bool(const Expr &)>;
 
 using BinaryIntFunction =
     std::function<std::int64_t(std::int64_t, std::int64_t)>;
@@ -98,64 +128,60 @@ class Env;
 struct Lambda {
   std::vector<std::string> params;
   bool variadic;
-  ExprPtr body;
+  Expr body;
   std::shared_ptr<Env> env;
 };
 
 struct List {
-  ExprPtrVec value{};
-  explicit List(ExprPtrVec value) : value(std::move(value)) {}
+  ExprVec value{};
+  explicit List(ExprVec value) : value(std::move(value)) {}
 };
 
 struct Vector {
-  ExprPtrVec value{};
-  explicit Vector(ExprPtrVec value) : value(std::move(value)) {}
+  ExprVec value{};
+  explicit Vector(ExprVec value) : value(std::move(value)) {}
 };
 
 struct HashMap {
-  ExprPtrMap value{};
-  explicit HashMap(ExprPtrMap value) : value(std::move(value)) {}
+  ExprMap value{};
+  explicit HashMap(ExprMap value) : value(std::move(value)) {}
 };
 
 struct Quote {
-  ExprPtr value;
+  Expr value;
 };
 
 struct QuasiQuote {
-  ExprPtr value;
+  Expr value;
 };
 
 struct Unquote {
-  ExprPtr value;
+  Expr value;
 };
 
 struct SpliceUnquote {
-  ExprPtr value;
+  Expr value;
 };
 
 struct Deref {
-  ExprPtr value;
+  Expr value;
 };
 
 struct MetaData {
-  ExprPtr meta;
-  ExprPtr value;
+  Expr meta;
+  Expr value;
 };
 
 struct Atom {
-  ExprPtr value;
+  Expr value;
 };
 
-ExprPtr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
-ExprPtr makeBuiltinFunction(const std::string &name, UnaryFunction func);
-ExprPtr makeBuiltinFunction(const std::string &name, UnaryBooleanFunction func);
-ExprPtr makeBuiltinFunction(const std::string &name, BinaryIntFunction func);
-ExprPtr makeBuiltinFunction(const std::string &name, VariadicIntFunction func);
-
-ExprPtr nilPtr();
-ExprPtr truePtr();
-ExprPtr falsePtr();
+Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
+Expr makeBuiltinFunction(const std::string &name, UnaryFunction func);
+Expr makeBuiltinFunction(const std::string &name, UnaryBooleanFunction func);
+Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction func);
+Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction func);
 
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);
-std::int64_t intVal(const ExprPtr &exprPtr);
+std::int64_t intVal(const Expr &expr);

@@ -2,10 +2,10 @@
 #include "printer.hpp"
 #include "types.hpp"
 
-ExprPtr Evaluator::trampoliningEval(const ExprPtr &exprPtr) {
-  auto exprP = exprPtr;
+Expr Evaluator::trampoliningEval(const Expr &expr) {
+  auto curExpr = expr;
   while (true) {
-    auto result = doEval(exprP);
+    auto result = doEval(curExpr);
     if (result.evaluated) {
       return result.result;
     }
@@ -14,12 +14,12 @@ ExprPtr Evaluator::trampoliningEval(const ExprPtr &exprPtr) {
       this->env = result.env;
     }
 
-    exprP = result.result;
+    curExpr = result.result;
   }
 }
 
-ExprPtr Evaluator::eval(const ExprPtr &exprPtr) {
-  auto result = doEval(exprPtr);
+Expr Evaluator::eval(const Expr &expr) {
+  auto result = doEval(expr);
   if (result.evaluated) {
     return result.result;
   }
@@ -32,27 +32,28 @@ ExprPtr Evaluator::eval(const ExprPtr &exprPtr) {
   return evaluator.eval(result.result);
 }
 
-EvalResult Evaluator::doEval(const ExprPtr &exprPtr) {
+EvalResult Evaluator::doEval(const Expr &expr) {
   static const std::unordered_set<std::string> SPECIAL_SYMBOLS = {
       "def!", "let*", "do", "if", "fn*",
   };
 
-  auto firstSym = firstSymbolOfList(exprPtr);
+  auto firstSym = firstSymbolOfList(expr);
   if (firstSym.has_value() && SPECIAL_SYMBOLS.contains(*firstSym)) {
-    return evalSpecialForm(*firstSym, std::get<List>(*exprPtr).value);
+    return evalSpecialForm(*firstSym, std::get<Box<List>>(expr)->value);
   }
 
-  auto evaluatedExprPtr = std::visit(*this, *exprPtr);
-  if (const auto *list = std::get_if<List>(&*evaluatedExprPtr)) {
-    if (!list->value.empty()) {
-      return applyFunction(list->value);
+  auto evaluatedExpr = std::visit(*this, expr);
+  if (const auto *list = std::get_if<Box<List>>(&evaluatedExpr)) {
+    const auto &elements = (*list)->value;
+    if (!elements.empty()) {
+      return applyFunction(elements);
     }
   }
-  return EvalResult{true, nullptr, evaluatedExprPtr};
+  return EvalResult{true, nullptr, evaluatedExpr};
 }
 
 EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
-                                      const ExprPtrVec &elements) {
+                                      const ExprVec &elements) {
   if (specialSymbol == "def!") {
     return EvalResult{true, env, evalDefBang(elements)};
   }
@@ -72,29 +73,29 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
   throw std::runtime_error("not a special symbol: " + specialSymbol);
 }
 
-ExprPtr Evaluator::evalDefBang(const ExprPtrVec &elements) {
+Expr Evaluator::evalDefBang(const ExprVec &elements) {
   checkArgCount(elements.size() - 1, 2);
   return std::get<1>(defineBinding(*this, env, elements[1], elements[2]));
 }
 
-EvalResult Evaluator::evalLetStar(const ExprPtrVec &elements) {
+EvalResult Evaluator::evalLetStar(const ExprVec &elements) {
   checkArgCount(elements.size() - 1, 2);
 
-  const auto &bindingsListPtr = elements[1];
-  if (const auto *bindingList = std::get_if<List>(&*bindingsListPtr)) {
-    return doEvalLetStar(bindingList->value, elements[2]);
+  const auto &bindingsList = elements[1];
+  if (const auto *bindingList = std::get_if<Box<List>>(&bindingsList)) {
+    return doEvalLetStar((*bindingList)->value, elements[2]);
   }
-  if (const auto *bindingList = std::get_if<Vector>(&*bindingsListPtr)) {
-    return doEvalLetStar(bindingList->value, elements[2]);
+  if (const auto *bindingList = std::get_if<Box<Vector>>(&bindingsList)) {
+    return doEvalLetStar((*bindingList)->value, elements[2]);
   }
   throw std::runtime_error("not a list or vector: " +
-                           prStr(bindingsListPtr, true));
+                           prStr(bindingsList, true));
 }
 
-EvalResult Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
-                                    const ExprPtr &letBodyPtr) {
+EvalResult Evaluator::doEvalLetStar(const ExprVec &bindingList,
+                                    const Expr &letBody) {
   if (bindingList.empty()) {
-    return EvalResult{false, env, letBodyPtr};
+    return EvalResult{false, env, letBody};
   }
 
   auto bindingListSize = bindingList.size();
@@ -107,7 +108,7 @@ EvalResult Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
   Evaluator letEvaluator(letEnvPtr);
   Evaluator *evaluator = this;
 
-  std::unordered_map<std::string, ExprPtr> bindings;
+  std::unordered_map<std::string, Expr> bindings;
   bindings.reserve(bindingListSize / 2);
 
   for (auto i = 0; i < bindingListSize; i += 2) {
@@ -121,19 +122,20 @@ EvalResult Evaluator::doEvalLetStar(const ExprPtrVec &bindingList,
   }
 
   for (const auto &[name, value] : bindings) {
-    if (const auto *lambda = std::get_if<Lambda>(&*value)) {
+    if (const auto *lambda = std::get_if<Box<Lambda>>(&value)) {
+      // cppcheck-suppress shadowVariable
       for (const auto &[name, value] : bindings) {
-        lambda->env->set(name, value);
+        (*lambda)->env->set(name, value);
       }
     }
   }
 
-  return EvalResult{false, evaluator->env, letBodyPtr};
+  return EvalResult{false, evaluator->env, letBody};
 }
 
-EvalResult Evaluator::evalDo(const ExprPtrVec &elements) {
+EvalResult Evaluator::evalDo(const ExprVec &elements) {
   if (elements.size() == 1) {
-    return EvalResult{true, env, nilPtr()};
+    return EvalResult{true, env, Nil::NIL};
   }
 
   for (auto i = 1; i < elements.size() - 1; i++) {
@@ -143,7 +145,7 @@ EvalResult Evaluator::evalDo(const ExprPtrVec &elements) {
   return EvalResult{false, nullptr, elements.back()};
 }
 
-EvalResult Evaluator::evalIf(const ExprPtrVec &elements) {
+EvalResult Evaluator::evalIf(const ExprVec &elements) {
   auto argCount = elements.size() - 1;
   if (argCount != 2 && argCount != 3) {
     throw std::runtime_error("expected two or three arguments, got: " +
@@ -151,40 +153,40 @@ EvalResult Evaluator::evalIf(const ExprPtrVec &elements) {
   }
 
   auto evaluatedCond = eval(elements[1]);
-  if (const auto *cond = std::get_if<Bool>(&*evaluatedCond)) {
+  if (const auto *cond = std::get_if<Bool>(&evaluatedCond)) {
     if (*cond == Bool::FALSE) {
       return argCount == 3 ? EvalResult{false, nullptr, elements[3]}
-                           : EvalResult{true, nullptr, nilPtr()};
+                           : EvalResult{true, nullptr, Nil::NIL};
     }
   }
-  if (const auto *cond = std::get_if<Nil>(&*evaluatedCond)) {
+  if (const auto *cond = std::get_if<Nil>(&evaluatedCond)) {
     return argCount == 3 ? EvalResult{false, nullptr, elements[3]}
-                         : EvalResult{true, nullptr, nilPtr()};
+                         : EvalResult{true, nullptr, Nil::NIL};
   }
   return EvalResult{false, nullptr, elements[2]};
 }
 
-ExprPtr Evaluator::evalFnStar(const ExprPtrVec &elements) {
+Expr Evaluator::evalFnStar(const ExprVec &elements) {
   checkArgCount(elements.size() - 1, 2);
 
-  if (const auto *params = std::get_if<List>(&*elements[1])) {
-    return doEvalFnStar(params->value, elements[2]);
+  if (const auto *params = std::get_if<Box<List>>(&elements[1])) {
+    return doEvalFnStar((*params)->value, elements[2]);
   }
-  if (const auto *params = std::get_if<Vector>(&*elements[1])) {
-    return doEvalFnStar(params->value, elements[2]);
+  if (const auto *params = std::get_if<Box<Vector>>(&elements[1])) {
+    return doEvalFnStar((*params)->value, elements[2]);
   }
 
   throw std::runtime_error("function params are not a list: " +
                            prStr(elements[1], true));
 }
 
-ExprPtr Evaluator::doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body) {
+Expr Evaluator::doEvalFnStar(const ExprVec &params, const Expr &body) {
   ParamNames paramNames;
   paramNames.reserve(params.size());
   bool variadic{false};
   int variadicParamsCount{0};
   for (const auto &param : params) {
-    if (const auto *paramName = std::get_if<Symbol>(&*param)) {
+    if (const auto *paramName = std::get_if<Symbol>(&param)) {
       if (paramName->value == "&") {
         variadic = true;
         continue;
@@ -206,24 +208,26 @@ ExprPtr Evaluator::doEvalFnStar(const ExprPtrVec &params, const ExprPtr &body) {
   }
 
   checkDupParamNames(paramNames);
-  return std::make_shared<Expr>(Lambda{.params = std::move(paramNames),
-                                       .variadic = variadic,
-                                       .body = body,
-                                       .env = std::make_shared<Env>(Env(env))});
+  return Lambda{.params = std::move(paramNames),
+                .variadic = variadic,
+                .body = body,
+                .env = std::make_shared<Env>(Env(env))};
 }
 
-EvalResult Evaluator::applyFunction(const ExprPtrVec &calleeAndArgs) {
+EvalResult Evaluator::applyFunction(const ExprVec &calleeAndArgs) {
   const auto &callee = calleeAndArgs[0];
-  if (const auto *func = std::get_if<BuiltinFunction>(&*callee)) {
+  if (const auto *funcPtr = std::get_if<Box<BuiltinFunction>>(&callee)) {
+    const auto &func = *funcPtr;
     auto argCount = calleeAndArgs.size() - 1;
     if (func->arity != -1) {
       checkArgCount(argCount, func->arity);
     }
-    const std::span<ExprPtr> args(const_cast<ExprPtrVec &>(calleeAndArgs));
+    const std::span<Expr> args(const_cast<ExprVec &>(calleeAndArgs));
     return EvalResult{true, nullptr, func->value(args.subspan(1))};
   }
 
-  if (const auto *lambda = std::get_if<Lambda>(&*callee)) {
+  if (const auto *lambdaPtr = std::get_if<Box<Lambda>>(&callee)) {
+    const auto &lambda = *lambdaPtr;
     auto paramCount = lambda->params.size();
     auto argCount = calleeAndArgs.size() - 1;
     if (lambda->variadic) {
@@ -233,7 +237,7 @@ EvalResult Evaluator::applyFunction(const ExprPtrVec &calleeAndArgs) {
     }
 
     auto lambdaEnv = std::make_shared<Env>(Env(lambda->env));
-    ExprPtrVec variadicArgs{lambdaEnv->get("list")};
+    ExprVec variadicArgs{lambdaEnv->get("list").getRaw()};
     for (int i = 0; i < argCount; i++) {
       const auto &arg = calleeAndArgs[i + 1];
       if (lambda->variadic) {
@@ -247,8 +251,7 @@ EvalResult Evaluator::applyFunction(const ExprPtrVec &calleeAndArgs) {
       }
     }
     if (lambda->variadic) {
-      auto arg = std::make_shared<Expr>(List{variadicArgs});
-      lambdaEnv->set(lambda->params[paramCount - 1], arg);
+      lambdaEnv->set(lambda->params[paramCount - 1], List{variadicArgs});
     }
 
     return EvalResult{false, lambdaEnv, lambda->body};

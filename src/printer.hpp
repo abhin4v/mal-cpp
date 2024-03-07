@@ -46,39 +46,37 @@ public:
   }
 
   std::string operator()(const HashMap &hashmap) const {
-    return prListLike(
-        flattenKeyValuePairs(std::vector<std::pair<ExprPtr, ExprPtr>>(
-            hashmap.value.begin(), hashmap.value.end())),
-        '{', '}');
+    return prListLike(flattenKeyValuePairs(std::vector<std::pair<Expr, Expr>>(
+                          hashmap.value.begin(), hashmap.value.end())),
+                      '{', '}');
   }
 
   std::string operator()(const Quote &expr) const {
-    return "(quote " + prExprPtr(expr.value) + ")";
+    return "(quote " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const QuasiQuote &expr) const {
-    return "(quasiquote " + prExprPtr(expr.value) + ")";
+    return "(quasiquote " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const Unquote &expr) const {
-    return "(unquote " + prExprPtr(expr.value) + ")";
+    return "(unquote " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const SpliceUnquote &expr) const {
-    return "(splice-unquote " + prExprPtr(expr.value) + ")";
+    return "(splice-unquote " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const Deref &expr) const {
-    return "(deref " + prExprPtr(expr.value) + ")";
+    return "(deref " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const MetaData &expr) const {
-    return "(with-meta " + prExprPtr(expr.value) + " " + prExprPtr(expr.meta) +
-           ")";
+    return "(with-meta " + prExpr(expr.value) + " " + prExpr(expr.meta) + ")";
   }
 
   std::string operator()(const Atom &expr) const {
-    return "(atom " + prExprPtr(expr.value) + ")";
+    return "(atom " + prExpr(expr.value) + ")";
   }
 
   std::string operator()(const BuiltinFunction &builtinFunc) const {
@@ -113,12 +111,12 @@ private:
     return output;
   }
 
-  [[nodiscard]] std::string prListLike(const ExprPtrVec &elements,
-                                       char startDelim, char endDelim) const {
+  [[nodiscard]] std::string prListLike(const ExprVec &elements, char startDelim,
+                                       char endDelim) const {
     std::stringstream buffer;
     buffer << startDelim;
-    for (const auto &elementPtr : elements) {
-      buffer << prExprPtr(elementPtr) << " ";
+    for (const auto &element : elements) {
+      buffer << prExpr(element) << " ";
     }
 
     if (elements.empty()) {
@@ -131,13 +129,13 @@ private:
     return ret;
   }
 
-  [[nodiscard]] std::string prExprPtr(const ExprPtr &exprPtr) const {
-    return std::visit(*this, *exprPtr);
+  [[nodiscard]] std::string prExpr(const Expr &expr) const {
+    return std::visit(*this, expr);
   }
 
-  static ExprPtrVec
-  flattenKeyValuePairs(const std::vector<std::pair<ExprPtr, ExprPtr>> &pairs) {
-    ExprPtrVec vec;
+  static ExprVec
+  flattenKeyValuePairs(const std::vector<std::pair<Expr, Expr>> &pairs) {
+    ExprVec vec;
     vec.reserve(pairs.size() * 2);
     for (const auto &pair : pairs) {
       vec.push_back(pair.first);
@@ -147,4 +145,4 @@ private:
   }
 };
 
-std::string prStr(const ExprPtr &exprPtr, bool printReadably);
+std::string prStr(const Expr &expr, bool printReadably);

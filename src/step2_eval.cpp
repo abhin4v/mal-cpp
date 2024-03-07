@@ -11,13 +11,11 @@
 #include <ostream>
 #include <sstream>
 
-ExprPtr READ(const std::string &input) { return readStr(input); }
+Expr READ(const std::string &input) { return readStr(input); }
 
-ExprPtr EVAL(Evaluator &evaluator, const ExprPtr &ast) {
-  return evaluator.eval(ast);
-}
+Expr EVAL(Evaluator &evaluator, const Expr &ast) { return evaluator.eval(ast); }
 
-std::string PRINT(const ExprPtr &value) { return prStr(value, true); }
+std::string PRINT(const Expr &value) { return prStr(value, true); }
 
 std::string rep(Evaluator &evaluator, const std::string &input) {
   return PRINT(EVAL(evaluator, READ(input)));
@@ -31,8 +29,8 @@ int main() {
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
   Env replEnv(nullptr);
-  for (const auto &[name, func] : Core::ns()) {
-    replEnv.set(name, func);
+  for (const auto &keyVal : Core::ns()) {
+    replEnv.set(keyVal.first, keyVal.second);
   }
 
   Evaluator evaluator(std::make_shared<Env>(replEnv));

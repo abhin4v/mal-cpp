@@ -2,6 +2,7 @@
 
 #include "printer.hpp"
 #include "types.hpp"
+#include <functional>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -18,8 +19,8 @@ private:
 public:
   explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
-  void set(const std::string &name, const ExprPtr &exprPtr) {
-    data[name] = exprPtr;
+  void set(const std::string &name, const Expr &expr) {
+    data.insert_or_assign(name, Box(expr));
   }
 
   [[nodiscard]] std::optional<ExprPtr> find(const std::string &name) const {
