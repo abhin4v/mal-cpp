@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include <iterator>
 
 class Equator {
 public:
@@ -89,17 +90,15 @@ private:
     return std::visit(*this, expr1, expr2);
   }
 
-  [[nodiscard]] bool equateElements(const ExprVec &elements,
-                                    const ExprVec &otherElements) const {
+  template <typename Container1, typename Container2>
+  [[nodiscard]] bool equateElements(const Container1 &elements,
+                                    const Container2 &otherElements) const {
     if (elements.size() != otherElements.size()) {
       return false;
     }
-    for (auto i = 0; i < elements.size(); i++) {
-      if (!equateExpr(elements[i], otherElements[i])) {
-        return false;
-      }
-    }
-    return true;
+    return std::equal(
+        elements.begin(), elements.end(), otherElements.begin(),
+        [&](auto expr1, auto expr2) { return equateExpr(expr1, expr2); });
   }
 };
 

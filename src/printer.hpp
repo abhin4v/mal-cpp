@@ -80,11 +80,16 @@ public:
   }
 
   std::string operator()(const BuiltinFunction &builtinFunc) const {
-    return "#<" + builtinFunc.name + ">";
+    return "#<" + builtinFunc.name + "/" + std::to_string(builtinFunc.arity) +
+           ">";
   }
 
-  std::string operator()(const Lambda & /*lambda*/) const {
-    return "#<function>";
+  std::string operator()(const Lambda &lambda) const {
+    auto paramCount = lambda.params.size();
+    return "#<lambda/" +
+           (lambda.variadic ? std::to_string(paramCount - 1) + "+"
+                            : std::to_string(paramCount)) +
+           ">";
   }
 
 private:
@@ -111,8 +116,9 @@ private:
     return output;
   }
 
-  [[nodiscard]] std::string prListLike(const ExprVec &elements, char startDelim,
-                                       char endDelim) const {
+  template <typename Container>
+  [[nodiscard]] std::string prListLike(const Container &elements,
+                                       char startDelim, char endDelim) const {
     std::stringstream buffer;
     buffer << startDelim;
     for (const auto &element : elements) {
@@ -133,10 +139,9 @@ private:
     return std::visit(*this, expr);
   }
 
-  static ExprVec
+  static ExprList
   flattenKeyValuePairs(const std::vector<std::pair<Expr, Expr>> &pairs) {
-    ExprVec vec;
-    vec.reserve(pairs.size() * 2);
+    ExprList vec;
     for (const auto &pair : pairs) {
       vec.push_back(pair.first);
       vec.push_back(pair.second);

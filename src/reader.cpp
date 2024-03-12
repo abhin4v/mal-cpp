@@ -36,11 +36,14 @@ Expr Reader::readForm() {
     case TokenType::LEFT_PAREN:
       return List{readList(token, TokenType::RIGHT_PAREN)};
 
-    case TokenType::LEFT_BRACKET:
-      return Vector{readList(token, TokenType::RIGHT_BRACKET)};
+    case TokenType::LEFT_BRACKET: {
+      const auto list = readList(token, TokenType::RIGHT_BRACKET);
+      return Vector{{list.begin(), list.end()}};
+    }
 
     case TokenType::LEFT_BRACE: {
-      auto elements = readList(token, TokenType::RIGHT_BRACE);
+      const auto list = readList(token, TokenType::RIGHT_BRACE);
+      const std::vector<Expr> elements{list.begin(), list.end()};
       auto elementCount = elements.size();
       if (elementCount % 2 != 0) {
         throw std::runtime_error("odd number of elements in hash-map");
@@ -94,10 +97,10 @@ Expr Reader::readForm() {
   throw std::runtime_error("no tokens");
 }
 
-ExprVec Reader::readList(const Token &startDelimToken,
-                         TokenType endDelimTokenType) {
+ExprList Reader::readList(const Token &startDelimToken,
+                          TokenType endDelimTokenType) {
   expect(startDelimToken);
-  ExprVec elements;
+  ExprList elements;
 
   while (true) {
     auto oToken = peek();

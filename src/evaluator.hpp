@@ -57,7 +57,7 @@ public:
       return list;
     }
 
-    ExprVec evaledElements;
+    ExprList evaledElements;
     evalElements(elements, evaledElements);
     return List{evaledElements};
   }
@@ -92,9 +92,9 @@ public:
 private:
   EvalResult doEval(const Expr &expr);
 
-  void evalElements(const ExprVec &elements, ExprVec &evaledElements) {
+  template <typename Container>
+  void evalElements(const Container &elements, Container &evaledElements) {
     const auto &that = this;
-    evaledElements.reserve(elements.size());
     std::transform(elements.begin(), elements.end(),
                    std::back_inserter(evaledElements),
                    [&](const auto &elem) { return that->eval(elem); });
@@ -105,7 +105,7 @@ private:
       const auto &elements = (*list)->value;
       if (!elements.empty()) {
         // NOLINTNEXTLINE(readability-container-data-pointer)
-        if (const auto *first = std::get_if<Symbol>(&elements[0])) {
+        if (const auto *first = std::get_if<Symbol>(&elements.front())) {
           return std::make_optional(first->value);
         }
       }
@@ -114,30 +114,31 @@ private:
   }
 
   EvalResult evalSpecialForm(const std::string &specialSymbol,
-                             const ExprVec &elements);
+                             const ExprList &elements);
 
-  Expr evalDefBang(const ExprVec &elements);
+  Expr evalDefBang(const ExprList &elements);
 
-  EvalResult evalLetStar(const ExprVec &elements);
+  EvalResult evalLetStar(const ExprList &elements);
 
-  EvalResult doEvalLetStar(const ExprVec &bindingList, const Expr &letBody);
+  template <typename Container>
+  EvalResult doEvalLetStar(const Container &bindingList, const Expr &letBody);
 
-  EvalResult evalDo(const ExprVec &elements);
+  EvalResult evalDo(const ExprList &elements);
 
-  EvalResult evalIf(const ExprVec &elements);
+  EvalResult evalIf(const ExprList &elements);
 
-  Expr evalFnStar(const ExprVec &elements);
+  Expr evalFnStar(const ExprList &elements);
 
-  Expr doEvalFnStar(const ExprVec &params, const Expr &body);
+  template <typename Container>
+  Expr doEvalFnStar(const Container &params, const Expr &body);
 
-  static EvalResult applyFunction(const ExprVec &calleeAndArgs);
+  static EvalResult applyFunction(ExprList &calleeAndArgs);
 
-  static std::pair<std::string, Expr> defineBinding(Evaluator &evaluator,
-                                                    const EnvPtr &env,
-                                                    const Expr &bindingNameExpr,
-                                                    const Expr &bindingValue) {
+  static std::pair<std::string, Expr>
+  defineBinding(Evaluator &evaluator, const EnvPtr &env,
+                const Expr &bindingNameExpr, const Expr &bindingValueExpr) {
     if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
-      auto evaluatedBindingValue = evaluator.eval(bindingValue);
+      auto evaluatedBindingValue = evaluator.eval(bindingValueExpr);
       auto name = bindingName->value;
       env->set(name, evaluatedBindingValue);
       return {name, evaluatedBindingValue};

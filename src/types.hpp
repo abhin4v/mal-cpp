@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <list>
 #include <span>
 #include <string>
 #include <unordered_map>
@@ -93,7 +94,7 @@ using ExprPtr = Box<Expr>;
 
 using ExprVec = std::vector<Expr>;
 
-using ExprSpan = std::span<Expr, std::dynamic_extent>;
+using ExprList = std::list<Expr>;
 
 struct ExprHash {
   size_t operator()(const Expr &key) const;
@@ -105,17 +106,25 @@ struct ExprEquals {
 
 using ExprMap = std::unordered_map<Expr, Expr, ExprHash, ExprEquals>;
 
-using ExprFunction = std::function<Expr(const ExprSpan &)>;
+using ExprFunction = std::function<Expr(ExprList &)>;
 
-using UnaryFunction = std::function<Expr(const Expr &)>;
+template <typename I, typename O>
+using UnaryFunction = std::function<O(const I &)>;
 
-using UnaryBooleanFunction = std::function<bool(const Expr &)>;
+template <typename T> using UnaryExprFunction = UnaryFunction<Expr, T>;
 
-using BinaryIntFunction =
-    std::function<std::int64_t(std::int64_t, std::int64_t)>;
+template <typename I, typename O>
+using BinaryFunction = std::function<O(const I &, const I &)>;
 
-using VariadicIntFunction =
-    std::function<std::int64_t(const std::vector<std::int64_t> &)>;
+template <typename T> using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
+
+template <typename T> using BinaryExprFunction = BinaryFunction<Expr, T>;
+
+template <typename I, typename O>
+using VariadicFunction = std::function<O(const std::vector<I> &)>;
+
+template <typename T>
+using VariadicIntFunction = VariadicFunction<std::int64_t, T>;
 
 struct BuiltinFunction {
   std::string name;
@@ -133,8 +142,8 @@ struct Lambda {
 };
 
 struct List {
-  ExprVec value{};
-  explicit List(ExprVec value) : value(std::move(value)) {}
+  ExprList value{};
+  explicit List(ExprList value) : value(std::move(value)) {}
 };
 
 struct Vector {
@@ -177,10 +186,18 @@ struct Atom {
 };
 
 Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
-Expr makeBuiltinFunction(const std::string &name, UnaryFunction func);
-Expr makeBuiltinFunction(const std::string &name, UnaryBooleanFunction func);
-Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction func);
-Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction func);
+
+template <typename T>
+Expr makeBuiltinFunction(const std::string &name, UnaryExprFunction<T> func);
+
+template <typename T>
+Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction<T> func);
+
+template <typename T>
+Expr makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
+
+Expr makeBuiltinFunction(const std::string &name,
+                         VariadicIntFunction<std::int64_t> func);
 
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);

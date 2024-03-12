@@ -38,27 +38,23 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
     replEnv->set(name, func);
   }
 
-  replEnv->set("eval", makeBuiltinFunction("eval", [&](const Expr &ast) {
+  replEnv->set("eval", makeBuiltinFunction<Expr>("eval", [&](const Expr &ast) {
                  return EVAL(evaluator, ast);
                }));
-  replEnv->set("trampolining-eval",
-               makeBuiltinFunction("trampolining-eval", [&](const Expr &ast) {
-                 return trampoliningEVAL(evaluator, ast);
-               }));
-  replEnv->set("swap!",
-               makeBuiltinFunction("swap!", -1, [&](const ExprSpan &args) {
+  replEnv->set(
+      "trampolining-eval",
+      makeBuiltinFunction<Expr>("trampolining-eval", [&](const Expr &ast) {
+        return trampoliningEVAL(evaluator, ast);
+      }));
+  replEnv->set("swap!", makeBuiltinFunction("swap!", -1, [&](ExprList &args) {
                  checkMinArgCount(args.size(), 2);
-                 const auto &arg = args[0];
-                 if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
-                   ExprVec funcAndArgs;
-                   funcAndArgs.reserve(args.size());
-                   funcAndArgs.push_back(args[1]);
-                   funcAndArgs.push_back((*atom)->value);
-                   auto extraArgs = args.subspan(2);
-                   std::copy(extraArgs.begin(), extraArgs.end(),
-                             std::back_insert_iterator(funcAndArgs));
+                 const auto arg = std::move(args.front());
+                 args.pop_front();
 
-                   auto newValue = EVAL(evaluator, List{funcAndArgs});
+                 if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
+                   args.insert(std::next(args.begin()), (*atom)->value);
+
+                   auto newValue = EVAL(evaluator, List{args});
                    (*atom)->value = newValue;
                    return newValue;
                  }
@@ -71,7 +67,7 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
       R"((def! load-file
                   (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))");
 
-  ExprVec progArgs{replEnv->get("list").getRaw()};
+  ExprList progArgs{replEnv->get("list").getRaw()};
   for (auto i = 2; i < args.size(); i++) {
     progArgs.emplace_back(String{args[i]});
   }

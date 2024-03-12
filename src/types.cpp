@@ -13,35 +13,90 @@ Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func) {
   return BuiltinFunction{std::move(name), arity, std::move(func)};
 }
 
-Expr makeBuiltinFunction(const std::string &name, UnaryFunction func) {
-  auto exprFunc = [func = std::move(func)](const ExprSpan &args) {
-    checkArgCount(args.size(), 1);
-    return func(args[0]);
-  };
-
-  return makeBuiltinFunction(name, 1, exprFunc);
+template <>
+Expr makeBuiltinFunction<bool>(const std::string &name,
+                               UnaryExprFunction<bool> func) {
+  return makeBuiltinFunction(
+      name, 1, [func = std::move(func)](const ExprList &args) {
+        checkArgCount(args.size(), 1);
+        return func(args.front()) ? Bool::TRUE : Bool::FALSE;
+      });
 }
 
-Expr makeBuiltinFunction(const std::string &name, UnaryBooleanFunction func) {
-  auto exprFunc = [func = std::move(func)](const ExprSpan &args) {
-    checkArgCount(args.size(), 1);
-    return func(args[0]) ? Bool::TRUE : Bool::FALSE;
-  };
-
-  return makeBuiltinFunction(name, 1, exprFunc);
+template <>
+Expr makeBuiltinFunction<Expr>(const std::string &name,
+                               UnaryExprFunction<Expr> func) {
+  return makeBuiltinFunction(name, 1,
+                             [func = std::move(func)](const ExprList &args) {
+                               checkArgCount(args.size(), 1);
+                               return func(args.front());
+                             });
 }
 
-Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction func) {
-  auto exprFunc = [func = std::move(func)](const ExprSpan &args) {
-    checkArgCount(args.size(), 2);
-    return Int{func(intVal(args[0]), intVal(args[1]))};
-  };
+namespace {
+template <typename T>
+T applyBinaryFunction(const BinaryExprFunction<T> &func, const ExprList &args) {
+  checkArgCount(args.size(), 2);
 
-  return makeBuiltinFunction(name, 2, exprFunc);
+  const auto &arg1 = args.front();
+  auto iter = args.begin();
+  std::advance(iter, 1);
+  const auto &arg2 = *iter;
+
+  return func(arg1, arg2);
 }
 
-Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction func) {
-  auto exprFunc = [func = std::move(func)](const ExprSpan &args) {
+template <typename T>
+T applyBinaryIntFunction(const BinaryIntFunction<T> &func,
+                         const ExprList &args) {
+  return applyBinaryFunction<T>(
+      [func = std::move(func)](const Expr &arg1, const Expr &arg2) {
+        return func(intVal(arg1), intVal(arg2));
+      },
+      args);
+}
+} // namespace
+
+template <>
+Expr makeBuiltinFunction<std::int64_t>(const std::string &name,
+                                       BinaryIntFunction<std::int64_t> func) {
+  return makeBuiltinFunction(
+      name, 2, [func = std::move(func)](const ExprList &args) {
+        return Int{applyBinaryIntFunction<std::int64_t>(func, args)};
+      });
+}
+
+template <>
+Expr makeBuiltinFunction<bool>(const std::string &name,
+                               BinaryIntFunction<bool> func) {
+  return makeBuiltinFunction(
+      name, 2, [func = std::move(func)](const ExprList &args) {
+        return applyBinaryIntFunction<bool>(func, args) ? Bool::TRUE
+                                                        : Bool::FALSE;
+      });
+}
+
+template <>
+Expr makeBuiltinFunction<bool>(const std::string &name,
+                               BinaryExprFunction<bool> func) {
+  return makeBuiltinFunction(
+      name, 2, [func = std::move(func)](const ExprList &args) {
+        return applyBinaryFunction<bool>(func, args) ? Bool::TRUE : Bool::FALSE;
+      });
+}
+
+template <>
+Expr makeBuiltinFunction<Expr>(const std::string &name,
+                               BinaryExprFunction<Expr> func) {
+  return makeBuiltinFunction(name, 2,
+                             [func = std::move(func)](const ExprList &args) {
+                               return applyBinaryFunction<Expr>(func, args);
+                             });
+}
+
+Expr makeBuiltinFunction(const std::string &name,
+                         VariadicIntFunction<std::int64_t> func) {
+  auto exprFunc = [func = std::move(func)](const ExprList &args) {
     std::vector<std::int64_t> intArgs;
     intArgs.reserve(args.size());
     std::transform(args.begin(), args.end(), std::back_inserter(intArgs),

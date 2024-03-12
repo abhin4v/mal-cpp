@@ -21,7 +21,7 @@ public:
   Expr readForm();
 
 private:
-  ExprVec readList(const Token &startDelimToken, TokenType endDelimTokenType);
+  ExprList readList(const Token &startDelimToken, TokenType endDelimTokenType);
 
   Expr readAtom();
 

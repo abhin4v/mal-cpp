@@ -29,113 +29,119 @@ private:
           return std::accumulate(args.begin(), args.end(), 1LL,
                                  std::multiplies<>());
         }));
-    builtins.emplace("-", makeBuiltinFunction("sub", [](auto arg1, auto arg2) {
-                       return arg1 - arg2;
-                     }));
-    builtins.emplace("/", makeBuiltinFunction("div", [](auto arg1, auto arg2) {
-                       return arg1 / arg2;
-                     }));
-    builtins.emplace("<", makeBuiltinFunction("<", 2, [](const ExprSpan &args) {
-                       return intVal(args[0]) < intVal(args[1]) ? Bool::TRUE
-                                                                : Bool::FALSE;
-                     }));
-    builtins.emplace(">", makeBuiltinFunction(">", 2, [](const ExprSpan &args) {
-                       return intVal(args[0]) > intVal(args[1]) ? Bool::TRUE
-                                                                : Bool::FALSE;
-                     }));
+    builtins.emplace("-", makeBuiltinFunction<std::int64_t>(
+                              "sub", [](std::int64_t arg1, std::int64_t arg2) {
+                                return arg1 - arg2;
+                              }));
+    builtins.emplace("/", makeBuiltinFunction<std::int64_t>(
+                              "div", [](std::int64_t arg1, std::int64_t arg2) {
+                                return arg1 / arg2;
+                              }));
+    builtins.emplace("<", makeBuiltinFunction<bool>(
+                              "<", [](std::int64_t arg1, std::int64_t arg2) {
+                                return arg1 < arg2;
+                              }));
+    builtins.emplace(">", makeBuiltinFunction<bool>(
+                              ">", [](std::int64_t arg1, std::int64_t arg2) {
+                                return arg1 > arg2;
+                              }));
+    builtins.emplace("<=", makeBuiltinFunction<bool>(
+                               "<=", [](std::int64_t arg1, std::int64_t arg2) {
+                                 return arg1 <= arg2;
+                               }));
+    builtins.emplace(">=", makeBuiltinFunction<bool>(
+                               ">=", [](std::int64_t arg1, std::int64_t arg2) {
+                                 return arg1 >= arg2;
+                               }));
+    builtins.emplace("=", makeBuiltinFunction<bool>(
+                              "=", [](const Expr &arg1, const Expr &arg2) {
+                                return exprEquals(arg1, arg2);
+                              }));
     builtins.emplace(
-        "<=", makeBuiltinFunction("<=", 2, [](const ExprSpan &args) {
-          return intVal(args[0]) <= intVal(args[1]) ? Bool::TRUE : Bool::FALSE;
-        }));
-    builtins.emplace(
-        ">=", makeBuiltinFunction(">=", 2, [](const ExprSpan &args) {
-          return intVal(args[0]) >= intVal(args[1]) ? Bool::TRUE : Bool::FALSE;
-        }));
-    builtins.emplace("=", makeBuiltinFunction("=", 2, [](const ExprSpan &args) {
-                       return exprEquals(args[0], args[1]) ? Bool::TRUE
-                                                           : Bool::FALSE;
-                     }));
-    builtins.emplace(
-        "pr-str", makeBuiltinFunction("pr-str", -1, [](const ExprSpan &args) {
+        "pr-str", makeBuiltinFunction("pr-str", -1, [](const ExprList &args) {
           return String{toString(args, true, " ")};
         }));
     builtins.emplace("str",
-                     makeBuiltinFunction("str", -1, [](const ExprSpan &args) {
+                     makeBuiltinFunction("str", -1, [](const ExprList &args) {
                        return String{toString(args, false, "")};
                      }));
 
     builtins.emplace("prn",
-                     makeBuiltinFunction("prn", -1, [](const ExprSpan &args) {
+                     makeBuiltinFunction("prn", -1, [](const ExprList &args) {
                        std::cout << toString(args, true, " ") << std::endl;
                        return Nil::NIL;
                      }));
     builtins.emplace(
-        "println", makeBuiltinFunction("println", -1, [](const ExprSpan &args) {
+        "println", makeBuiltinFunction("println", -1, [](const ExprList &args) {
           std::cout << toString(args, false, " ") << std::endl;
           return Nil::NIL;
         }));
-    builtins.emplace("list?", makeBuiltinFunction("list?", [](const Expr &arg) {
+    builtins.emplace("list?",
+                     makeBuiltinFunction<bool>("list?", [](const Expr &arg) {
                        return std::holds_alternative<Box<List>>(arg);
                      }));
     builtins.emplace("empty?",
-                     makeBuiltinFunction("empty?", [](const Expr &arg) {
+                     makeBuiltinFunction<bool>("empty?", [](const Expr &arg) {
                        return collectionCount(arg) == 0;
                      }));
-    builtins.emplace("count", makeBuiltinFunction("count", [](const Expr &arg) {
+    builtins.emplace("count",
+                     makeBuiltinFunction<Expr>("count", [](const Expr &arg) {
                        return Int{collectionCount(arg)};
                      }));
     builtins.emplace("list",
-                     makeBuiltinFunction("list", -1, [](const ExprSpan &args) {
-                       return List{{args.begin(), args.end()}};
+                     makeBuiltinFunction("list", -1, [](const ExprList &args) {
+                       return List{args};
                      }));
     builtins.emplace(
-        "read-string", makeBuiltinFunction("read-string", [](const Expr &arg) {
+        "read-string",
+        makeBuiltinFunction<Expr>("read-string", [](const Expr &arg) {
           if (const auto *str = std::get_if<String>(&arg)) {
             return readStr(str->value);
           }
 
           throw std::runtime_error("not a string: " + prStr(arg, true));
         }));
-    builtins.emplace("slurp", makeBuiltinFunction("slurp", [](const Expr &arg) {
-                       if (const auto *str = std::get_if<String>(&arg)) {
-                         const std::ifstream file(str->value);
-                         std::stringstream buffer;
-                         buffer << file.rdbuf();
-                         return String{buffer.str()};
-                       }
-
-                       throw std::runtime_error("not a string: " +
-                                                prStr(arg, true));
-                     }));
-    builtins.emplace("atom", makeBuiltinFunction("atom", [](const Expr &arg) {
-                       return Atom{arg};
-                     }));
-    builtins.emplace("atom?", makeBuiltinFunction("atom", [](const Expr &arg) {
-                       return std::holds_alternative<Box<Atom>>(arg);
-                     }));
-    builtins.emplace("deref", makeBuiltinFunction("deref", [](const Expr &arg) {
-                       if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
-                         return (*atom)->value;
-                       }
-
-                       throw std::runtime_error("not an atom: " +
-                                                prStr(arg, true));
-                     }));
     builtins.emplace(
-        "reset!", makeBuiltinFunction("reset!", 2, [](const ExprSpan &args) {
-          const auto &val = args[0];
-          if (const auto *atom = std::get_if<Box<Atom>>(&val)) {
-            (*atom)->value = args[1];
-            return args[1];
+        "slurp", makeBuiltinFunction<Expr>("slurp", [](const Expr &arg) {
+          if (const auto *str = std::get_if<String>(&arg)) {
+            const std::ifstream file(str->value);
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            return String{buffer.str()};
           }
 
-          throw std::runtime_error("not an atom: " + prStr(val, true));
+          throw std::runtime_error("not a string: " + prStr(arg, true));
+        }));
+    builtins.emplace("atom",
+                     makeBuiltinFunction<Expr>(
+                         "atom", [](const Expr &arg) { return Atom{arg}; }));
+    builtins.emplace("atom?",
+                     makeBuiltinFunction<bool>("atom?", [](const Expr &arg) {
+                       return std::holds_alternative<Box<Atom>>(arg);
+                     }));
+    builtins.emplace(
+        "deref", makeBuiltinFunction<Expr>("deref", [](const Expr &arg) {
+          if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
+            return (*atom)->value;
+          }
+
+          throw std::runtime_error("not an atom: " + prStr(arg, true));
+        }));
+    builtins.emplace(
+        "reset!", makeBuiltinFunction<Expr>("reset!", [](const Expr &arg1,
+                                                         const Expr &arg2) {
+          if (const auto *atom = std::get_if<Box<Atom>>(&arg1)) {
+            (*atom)->value = arg2;
+            return arg2;
+          }
+
+          throw std::runtime_error("not an atom: " + prStr(arg1, true));
         }));
 
     return builtins;
   }
 
-  static std::string toString(const ExprSpan &args, bool printReadably,
+  static std::string toString(const ExprList &args, bool printReadably,
                               const std::string &separator) {
     if (args.empty()) {
       return "";
