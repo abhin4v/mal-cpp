@@ -51,26 +51,6 @@ public:
                       '{', '}');
   }
 
-  std::string operator()(const Quote &expr) const {
-    return "(quote " + prExpr(expr.value) + ")";
-  }
-
-  std::string operator()(const QuasiQuote &expr) const {
-    return "(quasiquote " + prExpr(expr.value) + ")";
-  }
-
-  std::string operator()(const Unquote &expr) const {
-    return "(unquote " + prExpr(expr.value) + ")";
-  }
-
-  std::string operator()(const SpliceUnquote &expr) const {
-    return "(splice-unquote " + prExpr(expr.value) + ")";
-  }
-
-  std::string operator()(const Deref &expr) const {
-    return "(deref " + prExpr(expr.value) + ")";
-  }
-
   std::string operator()(const MetaData &expr) const {
     return "(with-meta " + prExpr(expr.value) + " " + prExpr(expr.meta) + ")";
   }

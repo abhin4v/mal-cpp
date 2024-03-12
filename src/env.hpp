@@ -1,5 +1,6 @@
 #pragma once
 
+#include "constants.hpp"
 #include "printer.hpp"
 #include "types.hpp"
 #include <functional>
@@ -20,6 +21,14 @@ public:
   explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
   void set(const std::string &name, const Expr &expr) {
+    if (const auto *list = std::get_if<Box<List>>(&expr)) {
+      ExprList elements{this->get(LIST_FN_SYM)};
+      elements.insert(elements.end(), (*list)->value.begin(),
+                      (*list)->value.end());
+      const Expr &listCopy = List{elements};
+      data.insert_or_assign(name, Box(listCopy));
+      return;
+    }
     data.insert_or_assign(name, Box(expr));
   }
 
@@ -27,7 +36,13 @@ public:
     const auto *env = this;
     while (env != nullptr) {
       if (env->data.contains(name)) {
-        return std::make_optional(env->data.at(name));
+        const auto &val = env->data.at(name);
+        if (const auto *list = std::get_if<Box<List>>(&(val.getRaw()))) {
+          const Expr &listCopy =
+              List{ExprList{(*list)->value.begin(), (*list)->value.end()}};
+          return std::make_optional(Box(listCopy));
+        }
+        return std::make_optional(val);
       }
       env = (env->outer).get();
     }

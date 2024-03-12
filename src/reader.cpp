@@ -1,4 +1,5 @@
 #include "reader.hpp"
+#include "constants.hpp"
 #include "tokenizer.hpp"
 #include "types.hpp"
 
@@ -61,27 +62,27 @@ Expr Reader::readForm() {
 
     case TokenType::QUOTE: {
       advance();
-      return Quote{readForm()};
+      return List{{Symbol{QUOTE_FORM_SYM}, readForm()}};
     }
 
     case TokenType::BACKQUOTE: {
       advance();
-      return QuasiQuote{readForm()};
+      return List{{Symbol{QUASIQUOTE_FORM_SYM}, readForm()}};
     }
 
     case TokenType::TILDE: {
       advance();
-      return Unquote{readForm()};
+      return List{{Symbol{UNQUOTE_FORM_SYM}, readForm()}};
     }
 
     case TokenType::TILDE_AT: {
       advance();
-      return SpliceUnquote{readForm()};
+      return List{{Symbol{SPLICE_UNQUOTE_FORM_SYM}, readForm()}};
     }
 
     case TokenType::AT: {
       advance();
-      return Deref{readForm()};
+      return List{{Symbol{DEREF_FN_SYM}, readForm()}};
     }
 
     case TokenType::CARET: {

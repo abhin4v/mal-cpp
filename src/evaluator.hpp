@@ -32,18 +32,6 @@ public:
   Expr operator()(const Keyword &kwd) const { return kwd; }
   Expr operator()(const BuiltinFunction &func) const { return func; }
   Expr operator()(const Lambda &lambda) const { return lambda; }
-  Expr operator()(const Quote &expr) const { return expr; }
-  Expr operator()(const QuasiQuote &expr) const { return expr; }
-  Expr operator()(const Unquote &expr) const { return expr; }
-  Expr operator()(const SpliceUnquote &expr) const { return expr; }
-  Expr operator()(const Deref &expr) {
-    auto evaledExpr = this->eval(expr.value);
-    if (const auto *atom = std::get_if<Box<Atom>>(&evaledExpr)) {
-      return (*atom)->value;
-    }
-
-    throw std::runtime_error("not an atom: " + prStr(expr.value, true));
-  }
   Expr operator()(const Atom &expr) const { return expr; }
   Expr operator()(const MetaData &expr) { return this->eval(expr.value); }
 
@@ -131,6 +119,10 @@ private:
 
   template <typename Container>
   Expr doEvalFnStar(const Container &params, const Expr &body);
+
+  static Expr quasiquote(const Expr &expr);
+
+  static Expr quasiquoteList(const List &list);
 
   static EvalResult applyFunction(ExprList &calleeAndArgs);
 

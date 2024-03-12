@@ -1,7 +1,17 @@
 #include "evaluator.hpp"
+#include "constants.hpp"
 #include "printer.hpp"
 #include "types.hpp"
 #include <iterator>
+#include <variant>
+
+namespace {
+Expr const *nth(const ExprList &exprs, size_t n) {
+  auto iter = exprs.begin();
+  std::advance(iter, n);
+  return &*iter;
+}
+} // namespace
 
 Expr Evaluator::trampoliningEval(const Expr &expr) {
   auto curExpr = expr;
@@ -34,12 +44,19 @@ Expr Evaluator::eval(const Expr &expr) {
 }
 
 EvalResult Evaluator::doEval(const Expr &expr) {
-  static const std::unordered_set<std::string> SPECIAL_SYMBOLS = {
-      "def!", "let*", "do", "if", "fn*",
+  static const std::unordered_set<std::string> SPECIAL_FORM_SYMBOLS = {
+      DEF_FORM_SYM,
+      LET_STAR_FORM_SYM,
+      DO_FORM_SYM,
+      IF_FORM_SYM,
+      FN_STAR_FORM_SYM,
+      QUOTE_FORM_SYM,
+      QUASIQUOTEEXPAND_FORM_SYM,
+      QUASIQUOTE_FORM_SYM,
   };
 
   auto firstSym = firstSymbolOfList(expr);
-  if (firstSym.has_value() && SPECIAL_SYMBOLS.contains(*firstSym)) {
+  if (firstSym.has_value() && SPECIAL_FORM_SYMBOLS.contains(*firstSym)) {
     return evalSpecialForm(*firstSym, std::get<Box<List>>(expr)->value);
   }
 
@@ -55,32 +72,33 @@ EvalResult Evaluator::doEval(const Expr &expr) {
 
 EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
                                       const ExprList &elements) {
-  if (specialSymbol == "def!") {
-    return EvalResult{true, env, evalDefBang(elements)};
+  if (specialSymbol == DEF_FORM_SYM) {
+    return EvalResult{true, nullptr, evalDefBang(elements)};
   }
-  if (specialSymbol == "let*") {
+  if (specialSymbol == LET_STAR_FORM_SYM) {
     return evalLetStar(elements);
   }
-  if (specialSymbol == "do") {
+  if (specialSymbol == DO_FORM_SYM) {
     return evalDo(elements);
   }
-  if (specialSymbol == "if") {
+  if (specialSymbol == IF_FORM_SYM) {
     return evalIf(elements);
   }
-  if (specialSymbol == "fn*") {
-    return EvalResult{true, env, evalFnStar(elements)};
+  if (specialSymbol == FN_STAR_FORM_SYM) {
+    return EvalResult{true, nullptr, evalFnStar(elements)};
+  }
+  if (specialSymbol == QUOTE_FORM_SYM) {
+    return EvalResult{true, nullptr, *nth(elements, 1)};
+  }
+  if (specialSymbol == QUASIQUOTEEXPAND_FORM_SYM) {
+    return EvalResult{true, nullptr, quasiquote(*nth(elements, 1))};
+  }
+  if (specialSymbol == QUASIQUOTE_FORM_SYM) {
+    return EvalResult{false, nullptr, quasiquote(*nth(elements, 1))};
   }
 
   throw std::runtime_error("not a special symbol: " + specialSymbol);
 }
-
-namespace {
-Expr const *nth(const ExprList &exprs, size_t n) {
-  auto iter = exprs.begin();
-  std::advance(iter, n);
-  return &*iter;
-}
-} // namespace
 
 Expr Evaluator::evalDefBang(const ExprList &elements) {
   checkArgCount(elements.size() - 1, 2);
@@ -173,7 +191,7 @@ EvalResult Evaluator::evalIf(const ExprList &elements) {
                         argCount == 3 ? elements.back() : Nil::NIL};
     }
   }
-  if (const auto *cond = std::get_if<Nil>(&evaluatedCond)) {
+  if (std::holds_alternative<Nil>(evaluatedCond)) {
     return EvalResult{argCount == 2, nullptr,
                       argCount == 3 ? elements.back() : Nil::NIL};
   }
@@ -229,6 +247,68 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
                 .env = std::make_shared<Env>(Env(env))};
 }
 
+Expr Evaluator::quasiquote(const Expr &expr) {
+  if (const auto *list = std::get_if<Box<List>>(&expr)) {
+    return quasiquoteList(*list);
+  }
+
+  if (const auto *vec = std::get_if<Box<Vector>>(&expr)) {
+    ExprList elements{(*vec)->value.begin(), (*vec)->value.end()};
+    if (const auto *sym = std::get_if<Symbol>(&((*vec)->value.front()))) {
+      if (sym->value == UNQUOTE_FORM_SYM) {
+        elements.front() = List{ExprList{
+            Symbol{UNQUOTE_FORM_SYM},
+            List{ExprList{Symbol{QUOTE_FORM_SYM}, Symbol{UNQUOTE_FORM_SYM}}}}};
+      }
+    }
+    return List{
+        ExprList{Symbol{VEC_FN_SYM}, quasiquote(std::move(List{elements}))}};
+  }
+
+  if (std::holds_alternative<Box<HashMap>>(expr) ||
+      std::holds_alternative<Symbol>(expr)) {
+    return List{ExprList{{Symbol{QUOTE_FORM_SYM}, expr}}};
+  }
+
+  return expr;
+}
+
+Expr Evaluator::quasiquoteList(const List &list) {
+  const auto &elements = list.value;
+  if (elements.empty()) {
+    return list;
+  }
+
+  if (const auto *sym = std::get_if<Symbol>(&elements.front())) {
+    if (sym->value == UNQUOTE_FORM_SYM && elements.size() > 1) {
+      checkArgCount(elements.size(), 2);
+      return elements.back();
+    }
+  }
+
+  if (const auto *elt = std::get_if<Box<List>>(&elements.front())) {
+    const auto &eltElements = (*elt)->value;
+    if (!eltElements.empty()) {
+      if (const auto *sym = std::get_if<Symbol>(&eltElements.front())) {
+        if (sym->value == SPLICE_UNQUOTE_FORM_SYM) {
+          checkArgCount(eltElements.size(), 2);
+          return List{ExprList{{
+              Symbol{CONCAT_FN_SYM},
+              eltElements.back(),
+              quasiquote(List{{std::next(elements.begin()), elements.end()}}),
+          }}};
+        }
+      }
+    }
+  }
+
+  return List{ExprList{
+      Symbol{CONS_FN_SYM},
+      quasiquote(elements.front()),
+      quasiquote(List{{std::next(elements.begin()), elements.end()}}),
+  }};
+}
+
 EvalResult Evaluator::applyFunction(ExprList &calleeAndArgs) {
   const auto callee = std::move(calleeAndArgs.front());
   calleeAndArgs.pop_front();
@@ -254,7 +334,7 @@ EvalResult Evaluator::applyFunction(ExprList &calleeAndArgs) {
     }
 
     auto lambdaEnv = std::make_shared<Env>(Env(lambda->env));
-    ExprList variadicArgs{lambdaEnv->get("list").getRaw()};
+    ExprList variadicArgs{};
 
     int idx = 0;
     for (const auto &arg : args) {

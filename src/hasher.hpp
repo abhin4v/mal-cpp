@@ -48,15 +48,6 @@ public:
     return hash ^ (bodyHash << 1U);
   }
 
-  size_t operator()(const Quote &expr) const { return hashExpr(expr.value); }
-  size_t operator()(const QuasiQuote &expr) const {
-    return hashExpr(expr.value);
-  }
-  size_t operator()(const Unquote &expr) const { return hashExpr(expr.value); }
-  size_t operator()(const SpliceUnquote &expr) const {
-    return hashExpr(expr.value);
-  }
-  size_t operator()(const Deref &expr) const { return hashExpr(expr.value); }
   size_t operator()(const MetaData &expr) const { return hashExpr(expr.value); }
   size_t operator()(const Atom &atom) const { return hashExpr(atom.value); }
 

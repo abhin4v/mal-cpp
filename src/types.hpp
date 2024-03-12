@@ -70,25 +70,13 @@ struct Vector;
 
 struct HashMap;
 
-struct Quote;
-
-struct QuasiQuote;
-
-struct Unquote;
-
-struct SpliceUnquote;
-
-struct Deref;
-
 struct MetaData;
 
 struct Atom;
 
-using Expr =
-    std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
-                 Box<Vector>, Box<HashMap>, Box<Quote>, Box<QuasiQuote>,
-                 Box<Unquote>, Box<SpliceUnquote>, Box<Deref>, Box<MetaData>,
-                 Box<BuiltinFunction>, Box<Lambda>, Box<Atom>>;
+using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
+                          Box<Vector>, Box<HashMap>, Box<MetaData>,
+                          Box<BuiltinFunction>, Box<Lambda>, Box<Atom>>;
 
 using ExprPtr = Box<Expr>;
 
@@ -154,26 +142,6 @@ struct Vector {
 struct HashMap {
   ExprMap value{};
   explicit HashMap(ExprMap value) : value(std::move(value)) {}
-};
-
-struct Quote {
-  Expr value;
-};
-
-struct QuasiQuote {
-  Expr value;
-};
-
-struct Unquote {
-  Expr value;
-};
-
-struct SpliceUnquote {
-  Expr value;
-};
-
-struct Deref {
-  Expr value;
 };
 
 struct MetaData {

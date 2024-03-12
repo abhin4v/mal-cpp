@@ -102,3 +102,16 @@ target_link_libraries(step6_file PRIVATE
   mal-evaluator
   mal-core
   ${LINENOISE_LIBRARIES})
+
+add_executable(step7_quote src/step7_quote.cpp)
+target_link_libraries(step7_quote PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  mal-equator
+  mal-hasher
+  mal-env
+  mal-evaluator
+  mal-core
+  ${LINENOISE_LIBRARIES})

@@ -30,23 +30,6 @@ public:
   bool operator()(const Lambda & /*func1*/, const Lambda & /*func2*/) const {
     return false;
   }
-  bool operator()(const Box<Quote> &expr1, const Box<Quote> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
-  bool operator()(const Box<QuasiQuote> &expr1,
-                  const Box<QuasiQuote> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
-  bool operator()(const Box<Unquote> &expr1, const Box<Unquote> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
-  bool operator()(const Box<SpliceUnquote> &expr1,
-                  const Box<SpliceUnquote> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
-  bool operator()(const Box<Deref> &expr1, const Box<Deref> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
   bool operator()(const Box<MetaData> &expr1,
                   const Box<MetaData> &expr2) const {
     return equateExpr(expr1->value, expr2->value);

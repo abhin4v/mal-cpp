@@ -67,7 +67,7 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
       R"((def! load-file
                   (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))");
 
-  ExprList progArgs{replEnv->get("list").getRaw()};
+  ExprList progArgs{};
   for (auto i = 2; i < args.size(); i++) {
     progArgs.emplace_back(String{args[i]});
   }

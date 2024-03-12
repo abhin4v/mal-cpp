@@ -1,5 +1,6 @@
 #pragma once
 
+#include "constants.hpp"
 #include "equator.hpp"
 #include "printer.hpp"
 #include "reader.hpp"
@@ -18,25 +19,27 @@ class Core {
 private:
   static std::unordered_map<std::string, Expr> makeBuiltins() noexcept {
     std::unordered_map<std::string, Expr> builtins;
+    // arithmetic functions
     builtins.emplace(
         "+",
-        makeBuiltinFunction("add", [](const std::vector<std::int64_t> &args) {
+        makeBuiltinFunction("+", [](const std::vector<std::int64_t> &args) {
           return std::accumulate(args.begin(), args.end(), 0LL);
         }));
     builtins.emplace(
         "*",
-        makeBuiltinFunction("mult", [](const std::vector<std::int64_t> &args) {
+        makeBuiltinFunction("*", [](const std::vector<std::int64_t> &args) {
           return std::accumulate(args.begin(), args.end(), 1LL,
                                  std::multiplies<>());
         }));
     builtins.emplace("-", makeBuiltinFunction<std::int64_t>(
-                              "sub", [](std::int64_t arg1, std::int64_t arg2) {
+                              "-", [](std::int64_t arg1, std::int64_t arg2) {
                                 return arg1 - arg2;
                               }));
     builtins.emplace("/", makeBuiltinFunction<std::int64_t>(
-                              "div", [](std::int64_t arg1, std::int64_t arg2) {
+                              "/", [](std::int64_t arg1, std::int64_t arg2) {
                                 return arg1 / arg2;
                               }));
+
     builtins.emplace("<", makeBuiltinFunction<bool>(
                               "<", [](std::int64_t arg1, std::int64_t arg2) {
                                 return arg1 < arg2;
@@ -57,6 +60,8 @@ private:
                               "=", [](const Expr &arg1, const Expr &arg2) {
                                 return exprEquals(arg1, arg2);
                               }));
+
+    // print to string functions
     builtins.emplace(
         "pr-str", makeBuiltinFunction("pr-str", -1, [](const ExprList &args) {
           return String{toString(args, true, " ")};
@@ -66,6 +71,7 @@ private:
                        return String{toString(args, false, "")};
                      }));
 
+    // print to stdout functions
     builtins.emplace("prn",
                      makeBuiltinFunction("prn", -1, [](const ExprList &args) {
                        std::cout << toString(args, true, " ") << std::endl;
@@ -76,6 +82,8 @@ private:
           std::cout << toString(args, false, " ") << std::endl;
           return Nil::NIL;
         }));
+
+    // list functions
     builtins.emplace("list?",
                      makeBuiltinFunction<bool>("list?", [](const Expr &arg) {
                        return std::holds_alternative<Box<List>>(arg);
@@ -88,10 +96,30 @@ private:
                      makeBuiltinFunction<Expr>("count", [](const Expr &arg) {
                        return Int{collectionCount(arg)};
                      }));
-    builtins.emplace("list",
-                     makeBuiltinFunction("list", -1, [](const ExprList &args) {
-                       return List{args};
-                     }));
+    builtins.emplace(LIST_FN_SYM, makeBuiltinFunction(LIST_FN_SYM, -1,
+                                                      [](const ExprList &args) {
+                                                        return List{args};
+                                                      }));
+    builtins.emplace(
+        VEC_FN_SYM, makeBuiltinFunction<Expr>(VEC_FN_SYM, [](const Expr &arg) {
+          if (const auto *list = std::get_if<Box<Vector>>(&arg)) {
+            return arg;
+          }
+          if (const auto *list = std::get_if<Box<List>>(&arg)) {
+            Expr vec = Vector{{(*list)->value.begin(), (*list)->value.end()}};
+            return vec;
+          }
+          throw std::runtime_error("not a list or vector: " + prStr(arg, true));
+        }));
+    builtins.emplace(CONCAT_FN_SYM,
+                     makeBuiltinFunction(CONCAT_FN_SYM, -1, concat));
+    builtins.emplace(CONS_FN_SYM,
+                     makeBuiltinFunction<Expr>(
+                         CONS_FN_SYM, [](const Expr &arg1, const Expr &arg2) {
+                           return concat(ExprList{List{ExprList{arg1}}, arg2});
+                         }));
+
+    // read from string/file functions
     builtins.emplace(
         "read-string",
         makeBuiltinFunction<Expr>("read-string", [](const Expr &arg) {
@@ -112,6 +140,8 @@ private:
 
           throw std::runtime_error("not a string: " + prStr(arg, true));
         }));
+
+    // atom functions
     builtins.emplace("atom",
                      makeBuiltinFunction<Expr>(
                          "atom", [](const Expr &arg) { return Atom{arg}; }));
@@ -120,7 +150,8 @@ private:
                        return std::holds_alternative<Box<Atom>>(arg);
                      }));
     builtins.emplace(
-        "deref", makeBuiltinFunction<Expr>("deref", [](const Expr &arg) {
+        DEREF_FN_SYM,
+        makeBuiltinFunction<Expr>(DEREF_FN_SYM, [](const Expr &arg) {
           if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
             return (*atom)->value;
           }
@@ -155,7 +186,7 @@ private:
   }
 
   static std::int64_t collectionCount(const Expr &arg) {
-    if (const auto *nil = std::get_if<Nil>(&arg)) {
+    if (std::holds_alternative<Nil>(arg)) {
       return 0;
     }
     if (const auto *list = std::get_if<Box<List>>(&arg)) {
@@ -169,6 +200,29 @@ private:
     }
     throw std::runtime_error("not a list, vector or hashmap: " +
                              prStr(arg, true));
+  }
+
+  static Expr concat(const ExprList &args) {
+    if (args.empty()) {
+      return List{{}};
+    }
+
+    ExprList newList;
+    for (const auto &arg : args) {
+      if (const auto *list = std::get_if<Box<List>>(&arg)) {
+        newList.insert(newList.end(), (*list)->value.begin(),
+                       (*list)->value.end());
+        continue;
+      }
+      if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+        newList.insert(newList.end(), (*vec)->value.begin(),
+                       (*vec)->value.end());
+        continue;
+      }
+      throw std::runtime_error("not a list or vector: " + prStr(arg, true));
+    }
+
+    return List{newList};
   }
 
   const inline static std::unordered_map<std::string, Expr> builtins =
