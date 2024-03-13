@@ -127,6 +127,7 @@ class Env;
 struct Lambda {
   std::vector<std::string> params;
   bool variadic;
+  bool macro;
   Expr body;
   std::shared_ptr<Env> env;
 };

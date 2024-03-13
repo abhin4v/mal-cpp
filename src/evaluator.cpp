@@ -45,22 +45,21 @@ Expr Evaluator::eval(const Expr &expr) {
 
 EvalResult Evaluator::doEval(const Expr &expr) {
   static const std::unordered_set<std::string> SPECIAL_FORM_SYMBOLS = {
-      DEF_FORM_SYM,
-      LET_STAR_FORM_SYM,
-      DO_FORM_SYM,
-      IF_FORM_SYM,
-      FN_STAR_FORM_SYM,
-      QUOTE_FORM_SYM,
-      QUASIQUOTEEXPAND_FORM_SYM,
-      QUASIQUOTE_FORM_SYM,
+      DEF_FORM_SYM,        DEFMACRO_FORM_SYM,
+      LET_STAR_FORM_SYM,   DO_FORM_SYM,
+      IF_FORM_SYM,         FN_STAR_FORM_SYM,
+      QUOTE_FORM_SYM,      QUASIQUOTEEXPAND_FORM_SYM,
+      QUASIQUOTE_FORM_SYM, MACROEXPAND_FORM_SYM,
   };
 
-  auto firstSym = firstSymbolOfList(expr);
+  const auto expandedExpr = macroexpand(expr);
+
+  auto firstSym = firstSymbolOfList(expandedExpr);
   if (firstSym.has_value() && SPECIAL_FORM_SYMBOLS.contains(*firstSym)) {
-    return evalSpecialForm(*firstSym, std::get<Box<List>>(expr)->value);
+    return evalSpecialForm(*firstSym, std::get<Box<List>>(expandedExpr)->value);
   }
 
-  auto evaluatedExpr = std::visit(*this, expr);
+  auto evaluatedExpr = std::visit(*this, expandedExpr);
   if (const auto *list = std::get_if<Box<List>>(&evaluatedExpr)) {
     auto &elements = (*list)->value;
     if (!elements.empty()) {
@@ -74,6 +73,9 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
                                       const ExprList &elements) {
   if (specialSymbol == DEF_FORM_SYM) {
     return EvalResult{true, nullptr, evalDefBang(elements)};
+  }
+  if (specialSymbol == DEFMACRO_FORM_SYM) {
+    return EvalResult{true, nullptr, evalDefmacroBang(elements)};
   }
   if (specialSymbol == LET_STAR_FORM_SYM) {
     return evalLetStar(elements);
@@ -96,14 +98,54 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
   if (specialSymbol == QUASIQUOTE_FORM_SYM) {
     return EvalResult{false, nullptr, quasiquote(*nth(elements, 1))};
   }
+  if (specialSymbol == MACROEXPAND_FORM_SYM) {
+    checkArgCount(elements.size() - 1, 1);
+    return EvalResult{true, nullptr, macroexpand(*nth(elements, 1))};
+  }
 
   throw WrongTypeError("a special symbol", Symbol{specialSymbol});
 }
 
+Expr Evaluator::macroexpand(const Expr &expr) {
+  auto curExpr = expr;
+  auto func = findMacroFunc(curExpr);
+  while (func.has_value() && func->getRaw().macro) {
+    const auto &list = std::get<Box<List>>(curExpr)->value;
+    ExprList calleeAndArgs{std::next(list.begin()), list.end()};
+    calleeAndArgs.emplace_front(func->getRaw());
+    const auto &result = applyFunction(calleeAndArgs);
+    if (result.evaluated) {
+      curExpr = result.result;
+    } else {
+      Evaluator evaluator(result.env);
+      curExpr = evaluator.eval(result.result);
+    }
+    func = findMacroFunc(curExpr);
+  }
+
+  return curExpr;
+}
+
 Expr Evaluator::evalDefBang(const ExprList &elements) {
   checkArgCount(elements.size() - 1, 2);
-  return std::get<1>(
-      defineBinding(*this, env, *nth(elements, 1), elements.back()));
+  return std::get<1>(defineBinding(
+      env, *nth(elements, 1), [&]() { return this->eval(elements.back()); }));
+}
+
+Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
+  checkArgCount(elements.size() - 1, 2);
+  const auto &bindingValueExpr = elements.back();
+  auto firstSym = firstSymbolOfList(bindingValueExpr);
+  if (!firstSym.has_value() || firstSym.value() != FN_STAR_FORM_SYM) {
+    throw WrongTypeError("fn* form", bindingValueExpr);
+  }
+
+  return std::get<1>(defineBinding(env, *nth(elements, 1), [&]() {
+    auto bindingValue = this->eval(bindingValueExpr);
+    const auto &lambda = std::get<Box<Lambda>>(bindingValue);
+    lambda->macro = true;
+    return std::move(bindingValue);
+  }));
 }
 
 EvalResult Evaluator::evalLetStar(const ExprList &elements) {
@@ -142,7 +184,8 @@ EvalResult Evaluator::doEvalLetStar(const Container &bindingList,
   for (auto iter = bindingList.begin(); iter != bindingList.end(); ++iter) {
     const auto bindingName = *iter;
     std::advance(iter, 1);
-    auto nameValue = defineBinding(*evaluator, letEnvPtr, bindingName, *iter);
+    auto nameValue = defineBinding(letEnvPtr, bindingName,
+                                   [&]() { return evaluator->eval(*iter); });
     bindings[nameValue.first] = nameValue.second;
     evaluator = &letEvaluator;
     letEnv = Env(letEnvPtr);
@@ -238,6 +281,7 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
   checkDupParamNames(paramNames);
   return Lambda{.params = std::move(paramNames),
                 .variadic = variadic,
+                .macro = false,
                 .body = body,
                 .env = std::make_shared<Env>(Env(env))};
 }

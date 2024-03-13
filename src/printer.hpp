@@ -66,7 +66,7 @@ public:
 
   std::string operator()(const Lambda &lambda) const {
     auto paramCount = lambda.params.size();
-    return "#<lambda/" +
+    return std::string(lambda.macro ? "%" : "#") + "<lambda/" +
            (lambda.variadic ? std::to_string(paramCount - 1) + "+"
                             : std::to_string(paramCount)) +
            ">";

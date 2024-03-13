@@ -4,6 +4,7 @@
 #include "printer.hpp"
 #include "types.hpp"
 #include <algorithm>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -11,6 +12,7 @@
 #include <string>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 
 struct EvalResult {
   bool evaluated;
@@ -104,7 +106,11 @@ private:
   EvalResult evalSpecialForm(const std::string &specialSymbol,
                              const ExprList &elements);
 
+  Expr macroexpand(const Expr &expr);
+
   Expr evalDefBang(const ExprList &elements);
+
+  Expr evalDefmacroBang(const ExprList &elements);
 
   EvalResult evalLetStar(const ExprList &elements);
 
@@ -126,11 +132,29 @@ private:
 
   static EvalResult applyFunction(ExprList &calleeAndArgs);
 
+  std::optional<Box<Lambda>> findMacroFunc(const Expr &expr) {
+    auto firstSym = firstSymbolOfList(expr);
+    if (!firstSym.has_value()) {
+      return std::nullopt;
+    }
+
+    const auto &val = env->find(firstSym.value());
+    if (!val.has_value()) {
+      return std::nullopt;
+    }
+
+    if (const auto *lambda = std::get_if<Box<Lambda>>(&val.value().getRaw())) {
+      return std::make_optional(*lambda);
+    }
+
+    return std::nullopt;
+  }
+
   static std::pair<std::string, Expr>
-  defineBinding(Evaluator &evaluator, const EnvPtr &env,
-                const Expr &bindingNameExpr, const Expr &bindingValueExpr) {
+  defineBinding(const EnvPtr &env, const Expr &bindingNameExpr,
+                const std::function<Expr()> &makeBindingValueExpr) {
     if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
-      auto evaluatedBindingValue = evaluator.eval(bindingValueExpr);
+      auto evaluatedBindingValue = makeBindingValueExpr();
       auto name = bindingName->value;
       env->set(name, evaluatedBindingValue);
       return {name, evaluatedBindingValue};
