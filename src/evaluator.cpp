@@ -97,7 +97,7 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
     return EvalResult{false, nullptr, quasiquote(*nth(elements, 1))};
   }
 
-  throw std::runtime_error("not a special symbol: " + specialSymbol);
+  throw WrongTypeError("a special symbol", Symbol{specialSymbol});
 }
 
 Expr Evaluator::evalDefBang(const ExprList &elements) {
@@ -116,8 +116,7 @@ EvalResult Evaluator::evalLetStar(const ExprList &elements) {
   if (const auto *bindingList = std::get_if<Box<Vector>>(&bindingsList)) {
     return doEvalLetStar((*bindingList)->value, elements.back());
   }
-  throw std::runtime_error("not a list or vector: " +
-                           prStr(bindingsList, true));
+  throw WrongTypeError("a list or vector", bindingsList);
 }
 
 template <typename Container>
@@ -129,7 +128,7 @@ EvalResult Evaluator::doEvalLetStar(const Container &bindingList,
 
   auto bindingListSize = bindingList.size();
   if (bindingListSize % 2 != 0) {
-    throw std::runtime_error("odd number of elements in let* binding list");
+    throw MALError("odd number of elements in let* binding list");
   }
 
   Env letEnv(this->env);
@@ -180,8 +179,7 @@ EvalResult Evaluator::evalDo(const ExprList &elements) {
 EvalResult Evaluator::evalIf(const ExprList &elements) {
   auto argCount = elements.size() - 1;
   if (argCount != 2 && argCount != 3) {
-    throw std::runtime_error("expected two or three arguments, got: " +
-                             std::to_string(argCount));
+    throw WrongArgCountError("two or three", argCount);
   }
 
   auto evaluatedCond = eval(*nth(elements, 1));
@@ -209,8 +207,7 @@ Expr Evaluator::evalFnStar(const ExprList &elements) {
     return doEvalFnStar((*params)->value, elements.back());
   }
 
-  throw std::runtime_error("function params are not a list: " +
-                           prStr(*mParams, true));
+  throw WrongTypeError("a list or vector", *mParams);
 }
 template <typename Container>
 Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
@@ -225,8 +222,7 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
         continue;
       }
       if (variadic && variadicParamsCount == 1) {
-        throw std::runtime_error(
-            "more than one variadic function params specified");
+        throw MALError("more than one variadic function params specified");
       }
 
       paramNames.push_back(paramName->value);
@@ -236,8 +232,7 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
       continue;
     }
 
-    throw std::runtime_error("function param is not symbol: " +
-                             prStr(param, true));
+    throw WrongTypeError("a symbol", param);
   }
 
   checkDupParamNames(paramNames);
@@ -357,5 +352,5 @@ EvalResult Evaluator::applyFunction(ExprList &calleeAndArgs) {
     return EvalResult{false, lambdaEnv, lambda->body};
   }
 
-  throw std::runtime_error("not a function: " + prStr(callee, true));
+  throw WrongTypeError("a function", callee);
 }

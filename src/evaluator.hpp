@@ -135,7 +135,7 @@ private:
       env->set(name, evaluatedBindingValue);
       return {name, evaluatedBindingValue};
     }
-    throw std::runtime_error("not a symbol: " + prStr(bindingNameExpr, true));
+    throw WrongTypeError("a symbol", bindingNameExpr);
   }
 
   using ParamNames = std::vector<std::string>;
@@ -148,7 +148,7 @@ private:
       for (const auto &param : dupParamNames) {
         error << param << " ";
       }
-      throw std::runtime_error(error.str());
+      throw MALError(error.str());
     }
   }
 

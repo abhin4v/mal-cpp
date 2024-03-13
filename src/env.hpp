@@ -54,7 +54,7 @@ public:
     if (val.has_value()) {
       return val.value();
     }
-    throw std::runtime_error("'" + name + "' not found");
+    throw MALError("'" + name + "' not found");
   }
 
   //   static void dump(const EnvPtr &env) {

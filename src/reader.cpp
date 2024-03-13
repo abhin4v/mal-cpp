@@ -23,7 +23,7 @@ Expr readStr(const std::string &input) {
   Reader reader(tokens);
   auto ret = reader.readForm();
   if (!reader.eof()) {
-    throw std::runtime_error("leftover tokens");
+    throw ReaderError("leftover tokens: " + reader.advance().toString());
   }
   return ret;
 }
@@ -47,7 +47,7 @@ Expr Reader::readForm() {
       const std::vector<Expr> elements{list.begin(), list.end()};
       auto elementCount = elements.size();
       if (elementCount % 2 != 0) {
-        throw std::runtime_error("odd number of elements in hash-map");
+        throw ReaderError("odd number of elements in hash-map");
       }
 
       ExprMap map;
@@ -95,7 +95,7 @@ Expr Reader::readForm() {
     }
   }
 
-  throw std::runtime_error("no tokens");
+  throw ReaderError("no tokens");
 }
 
 ExprList Reader::readList(const Token &startDelimToken,
@@ -117,7 +117,7 @@ ExprList Reader::readList(const Token &startDelimToken,
       continue;
     }
 
-    throw std::runtime_error("unbalanced delimiters");
+    throw ReaderError("unbalanced delimiters");
   }
 }
 
@@ -158,6 +158,6 @@ Expr Reader::readAtom() {
   default:
     std::stringstream error;
     error << "invalid token type: " << tokenTypeName(token.type);
-    throw std::runtime_error(error.str());
+    throw ReaderError(error.str());
   }
 }

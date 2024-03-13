@@ -83,12 +83,12 @@ std::vector<Token> Tokenizer::tokenize() {
       addTokenFromBuffer(prevTokenType);
       break;
     case TokenType::STRING:
-      throw std::runtime_error("unbalanced string");
+      throw TokenizerError("unbalanced string");
     default:
-      throw std::runtime_error("leftover input");
+      throw TokenizerError("leftover input");
     }
   } else if (prevTokenType == TokenType::STRING) {
-    throw std::runtime_error("unbalanced string");
+    throw TokenizerError("unbalanced string");
   }
 
   return tokens;

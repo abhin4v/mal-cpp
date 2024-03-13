@@ -46,8 +46,7 @@ private:
     if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg)) {
       return static_cast<std::int64_t>((*hashmap)->value.size());
     }
-    throw std::runtime_error("not a list, vector or hashmap: " +
-                             prStr(arg, true));
+    throw WrongTypeError("a list, vector or hashmap", arg);
   }
 
   static Expr concat(const ExprList &args) {
@@ -67,7 +66,7 @@ private:
                        (*vec)->value.end());
         continue;
       }
-      throw std::runtime_error("not a list or vector: " + prStr(arg, true));
+      throw WrongTypeError("a list or vector", arg);
     }
 
     return List{newList};

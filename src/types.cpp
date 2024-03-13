@@ -110,15 +110,13 @@ Expr makeBuiltinFunction(const std::string &name,
 
 void checkArgCount(size_t argCount, size_t expected) {
   if (argCount != expected) {
-    throw std::runtime_error("expected " + std::to_string(expected) +
-                             " arguments, got: " + std::to_string(argCount));
+    throw WrongArgCountError(std::to_string(expected), argCount);
   }
 }
 
 void checkMinArgCount(size_t argCount, size_t expected) {
   if (argCount < expected) {
-    throw std::runtime_error("expected at least " + std::to_string(expected) +
-                             " arguments, got: " + std::to_string(argCount));
+    throw WrongArgCountError("at least " + std::to_string(expected), argCount);
   }
 }
 
@@ -126,5 +124,9 @@ std::int64_t intVal(const Expr &expr) {
   if (const auto *intExpr = std::get_if<Int>(&expr)) {
     return intExpr->value;
   }
-  throw std::runtime_error("not an integer: " + prStr(expr, true));
+  throw WrongTypeError("an integer", expr);
 }
+
+WrongTypeError::WrongTypeError(const std::string &expected, const Expr &actual)
+    : MALError("wrong type: expected " + expected +
+               ", got: " + prStr(actual, true)) {}

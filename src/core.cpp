@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "types.hpp"
 
 std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
   std::unordered_map<std::string, Expr> builtins;
@@ -90,7 +91,7 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
           Expr vec = Vector{{(*list)->value.begin(), (*list)->value.end()}};
           return vec;
         }
-        throw std::runtime_error("not a list or vector: " + prStr(arg, true));
+        throw WrongTypeError("a list or vector", arg);
       }));
   builtins.emplace(CONCAT_FN_SYM,
                    makeBuiltinFunction(CONCAT_FN_SYM, -1, concat));
@@ -108,19 +109,19 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
           return readStr(str->value);
         }
 
-        throw std::runtime_error("not a string: " + prStr(arg, true));
+        throw WrongTypeError("a string", arg);
       }));
-  builtins.emplace(
-      "slurp", makeBuiltinFunction<Expr>("slurp", [](const Expr &arg) {
-        if (const auto *str = std::get_if<String>(&arg)) {
-          const std::ifstream file(str->value);
-          std::stringstream buffer;
-          buffer << file.rdbuf();
-          return String{buffer.str()};
-        }
+  builtins.emplace("slurp",
+                   makeBuiltinFunction<Expr>("slurp", [](const Expr &arg) {
+                     if (const auto *str = std::get_if<String>(&arg)) {
+                       const std::ifstream file(str->value);
+                       std::stringstream buffer;
+                       buffer << file.rdbuf();
+                       return String{buffer.str()};
+                     }
 
-        throw std::runtime_error("not a string: " + prStr(arg, true));
-      }));
+                     throw WrongTypeError("a string", arg);
+                   }));
 
   // atom functions
   builtins.emplace("atom",
@@ -136,19 +137,18 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                        return (*atom)->value;
                      }
 
-                     throw std::runtime_error("not an atom: " +
-                                              prStr(arg, true));
+                     throw WrongTypeError("an atom", arg);
                    }));
-  builtins.emplace(
-      "reset!", makeBuiltinFunction<Expr>("reset!", [](const Expr &arg1,
-                                                       const Expr &arg2) {
-        if (const auto *atom = std::get_if<Box<Atom>>(&arg1)) {
-          (*atom)->value = arg2;
-          return arg2;
-        }
+  builtins.emplace("reset!",
+                   makeBuiltinFunction<Expr>(
+                       "reset!", [](const Expr &arg1, const Expr &arg2) {
+                         if (const auto *atom = std::get_if<Box<Atom>>(&arg1)) {
+                           (*atom)->value = arg2;
+                           return arg2;
+                         }
 
-        throw std::runtime_error("not an atom: " + prStr(arg1, true));
-      }));
+                         throw WrongTypeError("an atom", arg1);
+                       }));
 
   return builtins;
 }
@@ -168,6 +168,6 @@ Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {
           return newValue;
         }
 
-        throw std::runtime_error("not an atom: " + prStr(arg, true));
+        throw WrongTypeError("an atom", arg);
       });
 }

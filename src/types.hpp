@@ -1,8 +1,10 @@
 #pragma once
 
+#include "errors.hpp"
 #include <cstdint>
 #include <list>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -170,3 +172,15 @@ Expr makeBuiltinFunction(const std::string &name,
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);
 std::int64_t intVal(const Expr &expr);
+
+class WrongTypeError : public MALError {
+public:
+  explicit WrongTypeError(const std::string &expected, const Expr &actual);
+};
+
+class WrongArgCountError : public MALError {
+public:
+  explicit WrongArgCountError(const std::string &expected, size_t &actual)
+      : MALError("wrong argument count: expected " + expected +
+                 " arguments, got: " + std::to_string(actual)) {}
+};

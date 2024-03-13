@@ -1,5 +1,6 @@
 #pragma once
 
+#include "errors.hpp"
 #include <cassert>
 #include <sstream>
 #include <string>
@@ -26,6 +27,12 @@ enum class TokenType {
 };
 
 const char *tokenTypeName(TokenType tokenType);
+
+class TokenizerError : public MALError {
+public:
+  explicit TokenizerError(const std::string &message)
+      : MALError("tokenizer error: " + message) {}
+};
 
 struct Token {
   TokenType type;
@@ -115,7 +122,7 @@ private:
     default:
       std::string error("invalid character: ");
       error += chr;
-      throw std::runtime_error(error);
+      throw TokenizerError(error);
     }
   }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "errors.hpp"
 #include "tokenizer.hpp"
 #include "types.hpp"
 #include <optional>
@@ -7,6 +8,12 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
+
+class ReaderError : public MALError {
+public:
+  explicit ReaderError(const std::string &message)
+      : MALError("reader error: " + message) {}
+};
 
 class Reader {
 private:
@@ -19,6 +26,15 @@ public:
   bool eof() { return !peek().has_value(); }
 
   Expr readForm();
+
+  Token advance() {
+    auto token = peek();
+    if (token.has_value()) {
+      position++;
+      return token.value();
+    }
+    throw ReaderError("at EOF");
+  }
 
 private:
   ExprList readList(const Token &startDelimToken, TokenType endDelimTokenType);
@@ -33,7 +49,7 @@ private:
       } else {
         std::stringstream error;
         error << "not a digit: " << chr;
-        throw std::runtime_error(error.str());
+        throw ReaderError(error.str());
       }
     }
     return num;
@@ -46,22 +62,13 @@ private:
     return std::make_optional(tokens[position + offset]);
   }
 
-  Token advance() {
-    auto token = peek();
-    if (token.has_value()) {
-      position++;
-      return token.value();
-    }
-    throw std::runtime_error("at EOF");
-  }
-
   void expect(const Token &expected) {
     auto const token = advance();
     if (token != expected) {
       std::stringstream error;
       error << "expected " << expected.toString() << ", got "
             << token.toString();
-      throw std::runtime_error(error.str());
+      throw ReaderError(error.str());
     }
   }
 

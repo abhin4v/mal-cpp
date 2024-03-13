@@ -32,7 +32,7 @@ int main() {
     try {
       auto output = rep(std::string(line));
       std::cout << output << std::endl;
-    } catch (const std::exception &e) {
+    } catch (const MALError &e) {
       std::cerr << e.what() << std::endl;
     }
 
