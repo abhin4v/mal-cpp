@@ -72,6 +72,13 @@ private:
     return List{newList};
   }
 
+  static void checkIndex(const size_t elementCount, const std::int64_t idx) {
+    if (idx >= elementCount) {
+      throw MALError("index " + std::to_string(idx) + " is out of bound " +
+                     std::to_string(elementCount));
+    }
+  }
+
   const inline static std::unordered_map<std::string, Expr> builtins =
       makeBuiltins();
 
@@ -84,4 +91,15 @@ public:
   static constexpr auto LOAD_FILE_FUNC =
       R"((def! load-file
                   (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))";
+  static constexpr auto COND_MACRO =
+      R"((defmacro! cond
+                  (fn* (& xs)
+                    (if (> (count xs) 0)
+                      (list
+                        'if
+                        (first xs)
+                        (if (> (count xs) 1)
+                          (nth xs 1)
+                          (throw "odd number of forms to cond"))
+                        (cons 'cond (rest (rest xs))))))))";
 };

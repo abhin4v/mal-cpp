@@ -108,6 +108,12 @@ Expr makeBuiltinFunction(const std::string &name,
   return makeBuiltinFunction(name, -1, exprFunc);
 }
 
+Expr const *nth(const ExprList &exprs, size_t n) {
+  auto iter = exprs.begin();
+  std::advance(iter, n);
+  return &*iter;
+}
+
 void checkArgCount(size_t argCount, size_t expected) {
   if (argCount != expected) {
     throw WrongArgCountError(std::to_string(expected), argCount);

@@ -170,6 +170,7 @@ Expr makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
 Expr makeBuiltinFunction(const std::string &name,
                          VariadicIntFunction<std::int64_t> func);
 
+Expr const *nth(const ExprList &exprs, size_t n);
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);
 std::int64_t intVal(const Expr &expr);

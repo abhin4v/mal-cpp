@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "errors.hpp"
 #include "types.hpp"
 
 std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
@@ -84,7 +85,7 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                                                     }));
   builtins.emplace(
       VEC_FN_SYM, makeBuiltinFunction<Expr>(VEC_FN_SYM, [](const Expr &arg) {
-        if (const auto *list = std::get_if<Box<Vector>>(&arg)) {
+        if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
           return arg;
         }
         if (const auto *list = std::get_if<Box<List>>(&arg)) {
@@ -100,6 +101,69 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                        CONS_FN_SYM, [](const Expr &arg1, const Expr &arg2) {
                          return concat(ExprList{List{ExprList{arg1}}, arg2});
                        }));
+  builtins.emplace(
+      "nth",
+      makeBuiltinFunction<Expr>("nth", [](const Expr &arg1, const Expr &arg2) {
+        if (const auto *idxPtr = std::get_if<Int>(&arg2)) {
+          auto idx = (*idxPtr).value;
+          if (const auto *vec = std::get_if<Box<Vector>>(&arg1)) {
+            const auto &elements = (*vec)->value;
+            checkIndex(elements.size(), idx);
+            return elements[idx];
+          }
+          if (const auto *list = std::get_if<Box<List>>(&arg1)) {
+            const auto &elements = (*list)->value;
+            checkIndex(elements.size(), idx);
+            return *nth(elements, idx);
+          }
+
+          throw WrongTypeError("a list or vector", arg1);
+        }
+
+        throw WrongTypeError("an int", arg2);
+      }));
+  builtins.emplace("first",
+                   makeBuiltinFunction<Expr>("first", [](const Expr &arg) {
+                     Expr nil = Nil::NIL;
+                     if (std::holds_alternative<Nil>(arg)) {
+                       return nil;
+                     }
+
+                     if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+                       const auto &elements = (*vec)->value;
+                       return elements.empty() ? nil : elements[0];
+                     }
+
+                     if (const auto *list = std::get_if<Box<List>>(&arg)) {
+                       const auto &elements = (*list)->value;
+                       return elements.empty() ? nil : elements.front();
+                     }
+
+                     throw WrongTypeError("a list or vector", arg);
+                   }));
+  builtins.emplace(
+      "rest", makeBuiltinFunction<Expr>("rest", [](const Expr &arg) {
+        Expr emptyList = List{{}};
+        if (std::holds_alternative<Nil>(arg)) {
+          return emptyList;
+        }
+
+        if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+          const auto &elements = (*vec)->value;
+          return elements.empty() ? emptyList
+                                  : List{ExprList{std::next(elements.begin()),
+                                                  elements.end()}};
+        }
+
+        if (const auto *list = std::get_if<Box<List>>(&arg)) {
+          const auto &elements = (*list)->value;
+          return elements.empty() ? emptyList
+                                  : List{ExprList{std::next(elements.begin()),
+                                                  elements.end()}};
+        }
+
+        throw WrongTypeError("a list or vector", arg);
+      }));
 
   // read from string/file functions
   builtins.emplace(

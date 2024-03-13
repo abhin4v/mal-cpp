@@ -115,3 +115,16 @@ target_link_libraries(step7_quote PRIVATE
   mal-evaluator
   mal-core
   ${LINENOISE_LIBRARIES})
+
+add_executable(step8_macros src/step8_macros.cpp)
+target_link_libraries(step8_macros PRIVATE
+  mal-tokenizer
+  mal-reader
+  mal-printer
+  mal-types
+  mal-equator
+  mal-hasher
+  mal-env
+  mal-evaluator
+  mal-core
+  ${LINENOISE_LIBRARIES})

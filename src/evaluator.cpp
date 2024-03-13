@@ -5,14 +5,6 @@
 #include <iterator>
 #include <variant>
 
-namespace {
-Expr const *nth(const ExprList &exprs, size_t n) {
-  auto iter = exprs.begin();
-  std::advance(iter, n);
-  return &*iter;
-}
-} // namespace
-
 Expr Evaluator::trampoliningEval(const Expr &expr) {
   auto curExpr = expr;
   while (true) {
