@@ -6,13 +6,13 @@
 #include <algorithm>
 #include <functional>
 #include <iterator>
-#include <memory>
 #include <optional>
-#include <stdexcept>
+#include <sstream>
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <variant>
+#include <vector>
 
 struct EvalResult {
   bool evaluated;

@@ -3,6 +3,7 @@
 #include "printer.hpp"
 #include "types.hpp"
 #include <iterator>
+#include <unordered_set>
 #include <variant>
 
 Expr Evaluator::trampoliningEval(const Expr &expr) {

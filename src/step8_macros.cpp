@@ -6,13 +6,9 @@
 #include "printer.hpp"
 #include "reader.hpp"
 #include "types.hpp"
-#include <algorithm>
 #include <iostream>
-#include <iterator>
 #include <memory>
-#include <numeric>
-#include <ostream>
-#include <sstream>
+#include <string>
 #include <vector>
 
 Expr READ(const std::string &input) { return readStr(input); }

@@ -3,10 +3,10 @@
 #include "errors.hpp"
 #include "tokenizer.hpp"
 #include "types.hpp"
+#include <cctype>
 #include <optional>
 #include <sstream>
-#include <stdexcept>
-#include <unordered_map>
+#include <string>
 #include <vector>
 
 class ReaderError : public MALError {

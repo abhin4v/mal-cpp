@@ -1,6 +1,5 @@
 #include "linenoise.h"
 #include <iostream>
-#include <ostream>
 #include <string>
 
 std::string READ(const std::string &input) { return input; }

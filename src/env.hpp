@@ -3,13 +3,12 @@
 #include "constants.hpp"
 #include "printer.hpp"
 #include "types.hpp"
-#include <functional>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 
 class Env {
 private:

@@ -2,6 +2,7 @@
 
 #include "errors.hpp"
 #include <cassert>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>

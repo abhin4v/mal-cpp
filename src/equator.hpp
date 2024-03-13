@@ -1,7 +1,8 @@
 #pragma once
 
 #include "types.hpp"
-#include <iterator>
+#include <algorithm>
+#include <variant>
 
 class Equator {
 public:

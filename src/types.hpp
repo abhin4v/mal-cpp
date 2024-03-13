@@ -1,13 +1,14 @@
 #pragma once
 
 #include "errors.hpp"
-#include <cstdint>
+#include <functional>
 #include <list>
-#include <span>
-#include <stdexcept>
+#include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 template <typename T> class Box {

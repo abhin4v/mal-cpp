@@ -7,9 +7,7 @@
 #include "types.hpp"
 #include <iostream>
 #include <memory>
-#include <numeric>
-#include <ostream>
-#include <sstream>
+#include <string>
 
 Expr READ(const std::string &input) { return readStr(input); }
 

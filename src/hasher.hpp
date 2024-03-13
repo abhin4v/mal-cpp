@@ -1,9 +1,9 @@
 #pragma once
 
 #include "types.hpp"
-#include <cstdint>
 #include <functional>
 #include <numeric>
+#include <string>
 #include <variant>
 
 class Hasher {
