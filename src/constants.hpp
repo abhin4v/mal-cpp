@@ -16,3 +16,4 @@ const static auto LIST_FN_SYM = "list";
 const static auto VEC_FN_SYM = "vec";
 const static auto CONS_FN_SYM = "cons";
 const static auto CONCAT_FN_SYM = "concat";
+const static auto SWAP_BANG_FN_SYM = "swap!";

@@ -1,3 +1,4 @@
+#include "constants.hpp"
 #include "core.hpp"
 #include "env.hpp"
 #include "evaluator.hpp"
@@ -46,26 +47,12 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
       makeBuiltinFunction<Expr>("trampolining-eval", [&](const Expr &ast) {
         return trampoliningEVAL(evaluator, ast);
       }));
-  replEnv->set("swap!", makeBuiltinFunction("swap!", -1, [&](ExprList &args) {
-                 checkMinArgCount(args.size(), 2);
-                 const auto arg = std::move(args.front());
-                 args.pop_front();
+  replEnv->set(SWAP_BANG_FN_SYM,
+               Core::makeSwapBangFunction(
+                   [&](const Expr &ast) { return EVAL(evaluator, ast); }));
 
-                 if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
-                   args.insert(std::next(args.begin()), (*atom)->value);
-
-                   auto newValue = EVAL(evaluator, List{args});
-                   (*atom)->value = newValue;
-                   return newValue;
-                 }
-
-                 throw std::runtime_error("not an atom: " + prStr(arg, true));
-               }));
-
-  rep(evaluator, "(def! not (fn* (a) (if a false true)))");
-  rep(evaluator,
-      R"((def! load-file
-                  (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))");
+  rep(evaluator, Core::NOT_FUNC);
+  rep(evaluator, Core::LOAD_FILE_FUNC);
 
   ExprList progArgs{};
   for (auto i = 2; i < args.size(); i++) {
