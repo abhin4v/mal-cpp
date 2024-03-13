@@ -2,9 +2,18 @@
 #include "errors.hpp"
 #include "types.hpp"
 
-std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
-  std::unordered_map<std::string, Expr> builtins;
-  // arithmetic functions
+Builtins Core::makeBuiltins() noexcept {
+  Builtins builtins;
+  makeArithmeticFunctions(builtins);
+  makeStringFunctions(builtins);
+  makePrintFunctions(builtins);
+  makeCollectionFunctions(builtins);
+  makeReadFunctions(builtins);
+  makeAtomFunctions(builtins);
+  return builtins;
+}
+
+void Core::makeArithmeticFunctions(Builtins &builtins) {
   builtins.emplace(
       "+", makeBuiltinFunction("+", [](const std::vector<std::int64_t> &args) {
         return std::accumulate(args.begin(), args.end(), 0LL);
@@ -39,12 +48,10 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                              ">=", [](std::int64_t arg1, std::int64_t arg2) {
                                return arg1 >= arg2;
                              }));
-  builtins.emplace("=", makeBuiltinFunction<bool>(
-                            "=", [](const Expr &arg1, const Expr &arg2) {
-                              return exprEquals(arg1, arg2);
-                            }));
+  builtins.emplace("=", makeBuiltinFunction<bool>("=", exprEquals));
+}
 
-  // print to string functions
+void Core::makeStringFunctions(Builtins &builtins) {
   builtins.emplace("pr-str",
                    makeBuiltinFunction("pr-str", -1, [](const ExprList &args) {
                      return String{toString(args, true, " ")};
@@ -53,8 +60,9 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                    makeBuiltinFunction("str", -1, [](const ExprList &args) {
                      return String{toString(args, false, "")};
                    }));
+}
 
-  // print to stdout functions
+void Core::makePrintFunctions(Builtins &builtins) {
   builtins.emplace("prn",
                    makeBuiltinFunction("prn", -1, [](const ExprList &args) {
                      std::cout << toString(args, true, " ") << std::endl;
@@ -65,8 +73,9 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                      std::cout << toString(args, false, " ") << std::endl;
                      return Nil::NIL;
                    }));
+}
 
-  // collection functions
+void Core::makeCollectionFunctions(Builtins &builtins) {
   builtins.emplace("list?",
                    makeBuiltinFunction<bool>("list?", [](const Expr &arg) {
                      return std::holds_alternative<Box<List>>(arg);
@@ -101,71 +110,76 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
                        CONS_FN_SYM, [](const Expr &arg1, const Expr &arg2) {
                          return concat(ExprList{List{ExprList{arg1}}, arg2});
                        }));
-  builtins.emplace(
-      "nth",
-      makeBuiltinFunction<Expr>("nth", [](const Expr &arg1, const Expr &arg2) {
-        if (const auto *idxPtr = std::get_if<Int>(&arg2)) {
-          auto idx = (*idxPtr).value;
-          if (const auto *vec = std::get_if<Box<Vector>>(&arg1)) {
-            const auto &elements = (*vec)->value;
-            checkIndex(elements.size(), idx);
-            return elements[idx];
-          }
-          if (const auto *list = std::get_if<Box<List>>(&arg1)) {
-            const auto &elements = (*list)->value;
-            checkIndex(elements.size(), idx);
-            return *nth(elements, idx);
-          }
-
-          throw WrongTypeError("a list or vector", arg1);
-        }
-
-        throw WrongTypeError("an int", arg2);
-      }));
+  builtins.emplace("nth", makeBuiltinFunction<Expr>("nth", Core::nthElement));
   builtins.emplace("first",
-                   makeBuiltinFunction<Expr>("first", [](const Expr &arg) {
-                     Expr nil = Nil::NIL;
-                     if (std::holds_alternative<Nil>(arg)) {
-                       return nil;
-                     }
+                   makeBuiltinFunction<Expr>("first", Core::firstElement));
+  builtins.emplace("rest",
+                   makeBuiltinFunction<Expr>("rest", Core::restElements));
+}
 
-                     if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
-                       const auto &elements = (*vec)->value;
-                       return elements.empty() ? nil : elements[0];
-                     }
+Expr Core::nthElement(const Expr &arg1, const Expr &arg2) {
+  if (const auto *idxPtr = std::get_if<Int>(&arg2)) {
+    auto idx = (*idxPtr).value;
+    if (const auto *vec = std::get_if<Box<Vector>>(&arg1)) {
+      const auto &elements = (*vec)->value;
+      checkIndex(elements.size(), idx);
+      return elements[idx];
+    }
+    if (const auto *list = std::get_if<Box<List>>(&arg1)) {
+      const auto &elements = (*list)->value;
+      checkIndex(elements.size(), idx);
+      return *nth(elements, idx);
+    }
 
-                     if (const auto *list = std::get_if<Box<List>>(&arg)) {
-                       const auto &elements = (*list)->value;
-                       return elements.empty() ? nil : elements.front();
-                     }
+    throw WrongTypeError("a list or vector", arg1);
+  }
 
-                     throw WrongTypeError("a list or vector", arg);
-                   }));
-  builtins.emplace(
-      "rest", makeBuiltinFunction<Expr>("rest", [](const Expr &arg) {
-        Expr emptyList = List{{}};
-        if (std::holds_alternative<Nil>(arg)) {
-          return emptyList;
-        }
+  throw WrongTypeError("an int", arg2);
+}
 
-        if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
-          const auto &elements = (*vec)->value;
-          return elements.empty() ? emptyList
-                                  : List{ExprList{std::next(elements.begin()),
-                                                  elements.end()}};
-        }
+Expr Core::firstElement(const Expr &arg) {
+  Expr nil = Nil::NIL;
+  if (std::holds_alternative<Nil>(arg)) {
+    return nil;
+  }
 
-        if (const auto *list = std::get_if<Box<List>>(&arg)) {
-          const auto &elements = (*list)->value;
-          return elements.empty() ? emptyList
-                                  : List{ExprList{std::next(elements.begin()),
-                                                  elements.end()}};
-        }
+  if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+    const auto &elements = (*vec)->value;
+    return elements.empty() ? nil : elements[0];
+  }
 
-        throw WrongTypeError("a list or vector", arg);
-      }));
+  if (const auto *list = std::get_if<Box<List>>(&arg)) {
+    const auto &elements = (*list)->value;
+    return elements.empty() ? nil : elements.front();
+  }
 
-  // read from string/file functions
+  throw WrongTypeError("a list or vector", arg);
+}
+
+Expr Core::restElements(const Expr &arg) {
+  Expr emptyList = List{{}};
+  if (std::holds_alternative<Nil>(arg)) {
+    return emptyList;
+  }
+
+  if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+    const auto &elements = (*vec)->value;
+    return elements.empty()
+               ? emptyList
+               : List{ExprList{std::next(elements.begin()), elements.end()}};
+  }
+
+  if (const auto *list = std::get_if<Box<List>>(&arg)) {
+    const auto &elements = (*list)->value;
+    return elements.empty()
+               ? emptyList
+               : List{ExprList{std::next(elements.begin()), elements.end()}};
+  }
+
+  throw WrongTypeError("a list or vector", arg);
+}
+
+void Core::makeReadFunctions(Builtins &builtins) {
   builtins.emplace(
       "read-string",
       makeBuiltinFunction<Expr>("read-string", [](const Expr &arg) {
@@ -186,8 +200,9 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
 
                      throw WrongTypeError("a string", arg);
                    }));
+}
 
-  // atom functions
+void Core::makeAtomFunctions(Builtins &builtins) {
   builtins.emplace("atom",
                    makeBuiltinFunction<Expr>(
                        "atom", [](const Expr &arg) { return Atom{arg}; }));
@@ -213,8 +228,6 @@ std::unordered_map<std::string, Expr> Core::makeBuiltins() noexcept {
 
                          throw WrongTypeError("an atom", arg1);
                        }));
-
-  return builtins;
 }
 
 Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {

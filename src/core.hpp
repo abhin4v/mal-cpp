@@ -15,9 +15,22 @@
 #include <unordered_map>
 #include <variant>
 
+using Builtins = std::unordered_map<std::string, Expr>;
+
 class Core {
 private:
-  static std::unordered_map<std::string, Expr> makeBuiltins() noexcept;
+  static Builtins makeBuiltins() noexcept;
+
+  static void makeArithmeticFunctions(Builtins &builtins);
+  static void makeStringFunctions(Builtins &builtins);
+  static void makePrintFunctions(Builtins &builtins);
+  static void makeCollectionFunctions(Builtins &builtins);
+  static void makeReadFunctions(Builtins &builtins);
+  static void makeAtomFunctions(Builtins &builtins);
+
+  static Expr nthElement(const Expr &arg1, const Expr &arg2);
+  static Expr firstElement(const Expr &arg);
+  static Expr restElements(const Expr &arg);
 
   static std::string toString(const ExprList &args, bool printReadably,
                               const std::string &separator) {
@@ -78,11 +91,10 @@ private:
     }
   }
 
-  const inline static std::unordered_map<std::string, Expr> builtins =
-      makeBuiltins();
+  const inline static Builtins builtins = makeBuiltins();
 
 public:
-  static std::unordered_map<std::string, Expr> ns() { return builtins; }
+  static Builtins ns() { return builtins; }
 
   static Expr makeSwapBangFunction(std::function<Expr(const Expr &)> eval);
 
