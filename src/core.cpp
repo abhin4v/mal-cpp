@@ -65,7 +65,6 @@ Builtins Core::makeBuiltins() noexcept {
                      if (const auto *str = std::get_if<String>(&arg)) {
                        return Expr{Keyword{str->value}};
                      }
-
                      throw WrongTypeError("a string or keyword", arg);
                    }));
   builtins.emplace("apply", makeBuiltinFunction("apply", -1, Core::apply));
@@ -87,31 +86,21 @@ void Core::makeArithmeticFunctions(Builtins &builtins) {
         return std::accumulate(args.begin(), args.end(), 1LL,
                                std::multiplies<>());
       }));
-  builtins.emplace("-", makeBuiltinFunction<std::int64_t>(
-                            "-", [](std::int64_t arg1, std::int64_t arg2) {
-                              return arg1 - arg2;
-                            }));
-  builtins.emplace("/", makeBuiltinFunction<std::int64_t>(
-                            "/", [](std::int64_t arg1, std::int64_t arg2) {
-                              return arg1 / arg2;
-                            }));
+  builtins.emplace("-", makeBuiltinFunction<std::int64_t>("-", std::minus<>()));
+  builtins.emplace("/",
+                   makeBuiltinFunction<std::int64_t>("/", std::divides<>()));
 
-  builtins.emplace("<", makeBuiltinFunction<bool>(
-                            "<", [](std::int64_t arg1, std::int64_t arg2) {
-                              return arg1 < arg2;
-                            }));
-  builtins.emplace(">", makeBuiltinFunction<bool>(
-                            ">", [](std::int64_t arg1, std::int64_t arg2) {
-                              return arg1 > arg2;
-                            }));
-  builtins.emplace("<=", makeBuiltinFunction<bool>(
-                             "<=", [](std::int64_t arg1, std::int64_t arg2) {
-                               return arg1 <= arg2;
-                             }));
+  // NOLINTBEGIN(modernize-use-transparent-functors)
+  builtins.emplace("<",
+                   makeBuiltinFunction<bool>("<", std::less<std::int64_t>()));
+  builtins.emplace(
+      ">", makeBuiltinFunction<bool>(">", std::greater<std::int64_t>()));
+  builtins.emplace(
+      "<=", makeBuiltinFunction<bool>("<=", std::less_equal<std::int64_t>()));
   builtins.emplace(">=", makeBuiltinFunction<bool>(
-                             ">=", [](std::int64_t arg1, std::int64_t arg2) {
-                               return arg1 >= arg2;
-                             }));
+                             ">=", std::greater_equal<std::int64_t>()));
+  // NOLINTEND(modernize-use-transparent-functors)
+
   builtins.emplace("=", makeBuiltinFunction<bool>("=", exprEquals));
 }
 
@@ -184,49 +173,9 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
   builtins.emplace("rest",
                    makeBuiltinFunction<Expr>("rest", Core::restElements));
 
-  builtins.emplace(
-      "assoc", makeBuiltinFunction("assoc", -1, [](ExprList &args) {
-        checkMinArgCount(args.size(), 1);
-
-        if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
-          ExprMap map{(*hashmap)->value};
-          args.pop_front();
-          auto assocs = makeHashMap(args);
-          assocs.value.merge(map);
-          return HashMap{assocs};
-        }
-
-        throw WrongTypeError("a hashmap", args.front());
-      }));
-  builtins.emplace(
-      "dissoc", makeBuiltinFunction("dissoc", -1, [](ExprList &args) {
-        checkMinArgCount(args.size(), 1);
-
-        if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
-          ExprMap map{(*hashmap)->value};
-          args.pop_front();
-          for (const auto &key : args) {
-            map.erase(key);
-          }
-          return HashMap{map};
-        }
-
-        throw WrongTypeError("a hashmap", args.front());
-      }));
-  builtins.emplace(
-      "get",
-      makeBuiltinFunction<Expr>("get", [](const Expr &arg1, const Expr &arg2) {
-        if (isOfType<Nil>(arg1)) {
-          return Expr{Nil::NIL};
-        }
-
-        if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg1)) {
-          return (*hashmap)->value.contains(arg2) ? (*hashmap)->value.at(arg2)
-                                                  : Expr{Nil::NIL};
-        }
-
-        throw WrongTypeError("a hashmap", arg1);
-      }));
+  builtins.emplace("assoc", makeBuiltinFunction("assoc", -1, Core::assoc));
+  builtins.emplace("dissoc", makeBuiltinFunction("dissoc", -1, Core::dissoc));
+  builtins.emplace("get", makeBuiltinFunction<Expr>("get", Core::get));
   builtins.emplace("contains?",
                    makeExprVariantFunc<Box<HashMap>, "a hashmap">(
                        "contains?", [](const auto &hashmap, const Expr &arg2) {
@@ -234,27 +183,69 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
                                                               : Bool::FALSE;
                        }));
   builtins.emplace("keys", makeExprVariantFunc<Box<HashMap>, "a hashmap">(
-                               "keys", [](const auto &hashmap) {
-                                 ExprList keys;
-                                 std::transform(hashmap->value.begin(),
-                                                hashmap->value.end(),
-                                                std::back_inserter(keys),
-                                                [](const auto &entry) {
-                                                  return entry.first;
-                                                });
-                                 return List{keys};
-                               }));
+                               "keys", Core::keys));
   builtins.emplace("vals", makeExprVariantFunc<Box<HashMap>, "a hashmap">(
-                               "vals", [](const auto &hashmap) {
-                                 ExprList vals;
-                                 std::transform(hashmap->value.begin(),
-                                                hashmap->value.end(),
-                                                std::back_inserter(vals),
-                                                [](const auto &entry) {
-                                                  return entry.second;
-                                                });
-                                 return List{vals};
-                               }));
+                               "vals", Core::vals));
+}
+
+void Core::makeReadFunctions(Builtins &builtins) {
+  builtins.emplace("read-string", makeExprVariantFunc<String, "a string">(
+                                      "read-string", [](const auto &str) {
+                                        return readStr(str.value);
+                                      }));
+  builtins.emplace("slurp", makeExprVariantFunc<String, "a string">(
+                                "slurp", [](const auto &str) {
+                                  const std::ifstream file(str.value);
+                                  std::stringstream buffer;
+                                  buffer << file.rdbuf();
+                                  return String{buffer.str()};
+                                }));
+}
+
+void Core::makeAtomFunctions(Builtins &builtins) {
+  builtins.emplace("atom",
+                   makeBuiltinFunction<Expr>(
+                       "atom", [](const Expr &arg) { return Atom{arg}; }));
+  builtins.emplace(DEREF_FN_SYM, makeExprVariantFunc<Box<Atom>, "an atom">(
+                                     DEREF_FN_SYM, [](const auto &atom) {
+                                       return atom->value;
+                                     }));
+  builtins.emplace("reset!",
+                   makeExprVariantFunc<Box<Atom>, "an atom">(
+                       "reset!", [](const auto &atom, const Expr &arg2) {
+                         atom->value = arg2;
+                         return arg2;
+                       }));
+}
+
+void Core::makeTypePredicateFunctions(Builtins &builtins) {
+  builtins.emplace("nil?", makeBuiltinFunction<bool>("nil?", isOfType<Nil>));
+  builtins.emplace(
+      "true?", makeBuiltinFunction<bool>("true?", [](const Expr &arg) {
+        return isOfType<Bool>(arg) && std::get<Bool>(arg) == Bool::TRUE;
+      }));
+  builtins.emplace(
+      "false?", makeBuiltinFunction<bool>("false?", [](const Expr &arg) {
+        return isOfType<Bool>(arg) && std::get<Bool>(arg) == Bool::FALSE;
+      }));
+  builtins.emplace("symbol?",
+                   makeBuiltinFunction<bool>("symbol?", isOfType<Symbol>));
+  builtins.emplace("keyword?",
+                   makeBuiltinFunction<bool>("keyword?", isOfType<Keyword>));
+  builtins.emplace("atom?",
+                   makeBuiltinFunction<bool>("atom?", isOfType<Box<Atom>>));
+  builtins.emplace("list?",
+                   makeBuiltinFunction<bool>("list?", isOfType<Box<List>>));
+  builtins.emplace("vector?",
+                   makeBuiltinFunction<bool>("vector?", isOfType<Box<Vector>>));
+  builtins.emplace("map?",
+                   makeBuiltinFunction<bool>("map?", isOfType<Box<HashMap>>));
+
+  builtins.emplace(
+      "sequential?",
+      makeBuiltinFunction<bool>("sequential?", [](const Expr &arg) {
+        return isOfType<Box<List>>(arg) || isOfType<Box<Vector>>(arg);
+      }));
 }
 
 Expr Core::apply(ExprList &args) {
@@ -301,6 +292,44 @@ Expr Core::map(const Expr &arg1, const Expr &arg2) {
     return List{ret};
   }
   throw WrongTypeError("a list or vector", arg2);
+}
+
+std::int64_t Core::collectionCount(const Expr &arg) {
+  if (std::holds_alternative<Nil>(arg)) {
+    return 0;
+  }
+  if (const auto *list = std::get_if<Box<List>>(&arg)) {
+    return static_cast<std::int64_t>((*list)->value.size());
+  }
+  if (const auto *vector = std::get_if<Box<Vector>>(&arg)) {
+    return static_cast<std::int64_t>((*vector)->value.size());
+  }
+  if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg)) {
+    return static_cast<std::int64_t>((*hashmap)->value.size());
+  }
+  throw WrongTypeError("a list, vector or hashmap", arg);
+}
+
+Expr Core::concat(const ExprList &args) {
+  if (args.empty()) {
+    return List{{}};
+  }
+
+  ExprList newList;
+  for (const auto &arg : args) {
+    if (const auto *list = std::get_if<Box<List>>(&arg)) {
+      newList.insert(newList.end(), (*list)->value.begin(),
+                     (*list)->value.end());
+      continue;
+    }
+    if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+      newList.insert(newList.end(), (*vec)->value.begin(), (*vec)->value.end());
+      continue;
+    }
+    throw WrongTypeError("a list or vector", arg);
+  }
+
+  return List{newList};
 }
 
 Expr Core::nthElement(const Expr &arg1, const Expr &arg2) {
@@ -365,66 +394,62 @@ Expr Core::restElements(const Expr &arg) {
   throw WrongTypeError("a list or vector", arg);
 }
 
-void Core::makeReadFunctions(Builtins &builtins) {
-  builtins.emplace("read-string", makeExprVariantFunc<String, "a string">(
-                                      "read-string", [](const auto &str) {
-                                        return readStr(str.value);
-                                      }));
-  builtins.emplace("slurp", makeExprVariantFunc<String, "a string">(
-                                "slurp", [](const auto &str) {
-                                  const std::ifstream file(str.value);
-                                  std::stringstream buffer;
-                                  buffer << file.rdbuf();
-                                  return String{buffer.str()};
-                                }));
+Expr Core::assoc(ExprList &args) {
+  checkMinArgCount(args.size(), 1);
+
+  if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
+    ExprMap map{(*hashmap)->value};
+    args.pop_front();
+    auto assocs = makeHashMap(args);
+    assocs.value.merge(map);
+    return HashMap{assocs};
+  }
+
+  throw WrongTypeError("a hashmap", args.front());
 }
 
-void Core::makeAtomFunctions(Builtins &builtins) {
-  builtins.emplace("atom",
-                   makeBuiltinFunction<Expr>(
-                       "atom", [](const Expr &arg) { return Atom{arg}; }));
-  builtins.emplace(DEREF_FN_SYM, makeExprVariantFunc<Box<Atom>, "an atom">(
-                                     DEREF_FN_SYM, [](const auto &atom) {
-                                       return atom->value;
-                                     }));
-  builtins.emplace("reset!",
-                   makeExprVariantFunc<Box<Atom>, "an atom">(
-                       "reset!", [](const auto &atom, const Expr &arg2) {
-                         atom->value = arg2;
-                         return arg2;
-                       }));
+Expr Core::dissoc(ExprList &args) {
+  checkMinArgCount(args.size(), 1);
+
+  if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
+    ExprMap map{(*hashmap)->value};
+    args.pop_front();
+    for (const auto &key : args) {
+      map.erase(key);
+    }
+    return HashMap{map};
+  }
+
+  throw WrongTypeError("a hashmap", args.front());
 }
 
-void Core::makeTypePredicateFunctions(Builtins &builtins) {
-  builtins.emplace("nil?", makeBuiltinFunction<bool>("nil?", isOfType<Nil>));
-  builtins.emplace("true?",
-                   makeBuiltinFunction<bool>("true?", [](const Expr &arg) {
-                     return std::holds_alternative<Bool>(arg) &&
-                            std::get<Bool>(arg) == Bool::TRUE;
-                   }));
-  builtins.emplace("false?",
-                   makeBuiltinFunction<bool>("false?", [](const Expr &arg) {
-                     return std::holds_alternative<Bool>(arg) &&
-                            std::get<Bool>(arg) == Bool::FALSE;
-                   }));
-  builtins.emplace("symbol?",
-                   makeBuiltinFunction<bool>("symbol?", isOfType<Symbol>));
-  builtins.emplace("keyword?",
-                   makeBuiltinFunction<bool>("keyword?", isOfType<Keyword>));
-  builtins.emplace("atom?",
-                   makeBuiltinFunction<bool>("atom?", isOfType<Box<Atom>>));
-  builtins.emplace("list?",
-                   makeBuiltinFunction<bool>("list?", isOfType<Box<List>>));
-  builtins.emplace("vector?",
-                   makeBuiltinFunction<bool>("vector?", isOfType<Box<Vector>>));
-  builtins.emplace("map?",
-                   makeBuiltinFunction<bool>("map?", isOfType<Box<HashMap>>));
+Expr Core::get(const Expr &arg1, const Expr &arg2) {
+  if (isOfType<Nil>(arg1)) {
+    return Expr{Nil::NIL};
+  }
 
-  builtins.emplace(
-      "sequential?",
-      makeBuiltinFunction<bool>("sequential?", [](const Expr &arg) {
-        return isOfType<Box<List>>(arg) || isOfType<Box<Vector>>(arg);
-      }));
+  if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg1)) {
+    return (*hashmap)->value.contains(arg2) ? (*hashmap)->value.at(arg2)
+                                            : Expr{Nil::NIL};
+  }
+
+  throw WrongTypeError("a hashmap", arg1);
+}
+
+Expr Core::keys(const Box<HashMap> &hashmap) {
+  ExprList keys;
+  std::transform(hashmap->value.begin(), hashmap->value.end(),
+                 std::back_inserter(keys),
+                 [](const auto &entry) { return entry.first; });
+  return List{keys};
+}
+
+Expr Core::vals(const Box<HashMap> &hashmap) {
+  ExprList vals;
+  std::transform(hashmap->value.begin(), hashmap->value.end(),
+                 std::back_inserter(vals),
+                 [](const auto &entry) { return entry.second; });
+  return List{vals};
 }
 
 Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {
