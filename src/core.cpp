@@ -69,6 +69,11 @@ Builtins Core::makeBuiltins() noexcept {
                      throw WrongTypeError("a string or keyword", arg);
                    }));
   builtins.emplace("apply", makeBuiltinFunction("apply", -1, Core::apply));
+  builtins.emplace("throw",
+                   makeBuiltinFunction<Expr>("throw", [](const Expr &arg) {
+                     throw MALException(arg);
+                     return Expr{Nil::NIL};
+                   }));
   return builtins;
 }
 
@@ -231,20 +236,24 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
   builtins.emplace("keys", makeExprVariantFunc<Box<HashMap>, "a hashmap">(
                                "keys", [](const auto &hashmap) {
                                  ExprList keys;
-                                 for (const auto &entry : hashmap->value) {
-                                   keys.push_back(entry.first);
-                                 }
-
+                                 std::transform(hashmap->value.begin(),
+                                                hashmap->value.end(),
+                                                std::back_inserter(keys),
+                                                [](const auto &entry) {
+                                                  return entry.first;
+                                                });
                                  return List{keys};
                                }));
   builtins.emplace("vals", makeExprVariantFunc<Box<HashMap>, "a hashmap">(
                                "vals", [](const auto &hashmap) {
-                                 ExprList keys;
-                                 for (const auto &entry : hashmap->value) {
-                                   keys.push_back(entry.second);
-                                 }
-
-                                 return List{keys};
+                                 ExprList vals;
+                                 std::transform(hashmap->value.begin(),
+                                                hashmap->value.end(),
+                                                std::back_inserter(vals),
+                                                [](const auto &entry) {
+                                                  return entry.second;
+                                                });
+                                 return List{vals};
                                }));
 }
 

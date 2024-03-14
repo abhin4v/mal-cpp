@@ -12,6 +12,8 @@ const static auto QUASIQUOTE_FORM_SYM = "quasiquote";
 const static auto UNQUOTE_FORM_SYM = "unquote";
 const static auto SPLICE_UNQUOTE_FORM_SYM = "splice-unquote";
 const static auto MACROEXPAND_FORM_SYM = "macroexpand";
+const static auto TRY_STAR_FORM_SYM = "try*";
+const static auto CATCH_STAR_FORM_SYM = "catch*";
 
 const static auto DEREF_FN_SYM = "deref";
 const static auto LIST_FN_SYM = "list";

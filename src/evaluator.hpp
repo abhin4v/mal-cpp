@@ -4,6 +4,7 @@
 #include "printer.hpp"
 #include "types.hpp"
 #include <algorithm>
+#include <exception>
 #include <functional>
 #include <iterator>
 #include <optional>
@@ -18,6 +19,23 @@ struct EvalResult {
   bool evaluated;
   EnvPtr env;
   Expr result;
+};
+
+class MALException : public std::exception {
+private:
+  Expr value;
+  std::string message;
+
+public:
+  explicit MALException(Expr value) : value(std::move(value)) {
+    message = std::move(prStr(this->value, true));
+  }
+
+  [[nodiscard]] const char *what() const noexcept override {
+    return message.c_str();
+  }
+
+  [[nodiscard]] Expr getValue() const { return value; }
 };
 
 class Evaluator {
@@ -131,6 +149,8 @@ private:
   static Expr quasiquote(const Expr &expr);
 
   static Expr quasiquoteList(const List &list);
+
+  Expr evalTryStar(const ExprList &elements);
 
   static EvalResult applyFunction(const Expr &callee, ExprList &args);
 

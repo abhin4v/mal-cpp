@@ -1,5 +1,6 @@
 #include "evaluator.hpp"
 #include "constants.hpp"
+#include "errors.hpp"
 #include "printer.hpp"
 #include "types.hpp"
 #include <iterator>
@@ -43,6 +44,7 @@ EvalResult Evaluator::doEval(const Expr &expr) {
       IF_FORM_SYM,         FN_STAR_FORM_SYM,
       QUOTE_FORM_SYM,      QUASIQUOTEEXPAND_FORM_SYM,
       QUASIQUOTE_FORM_SYM, MACROEXPAND_FORM_SYM,
+      TRY_STAR_FORM_SYM,
   };
 
   const auto expandedExpr = macroexpand(expr);
@@ -97,8 +99,52 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
     checkArgCount(elements.size() - 1, 1);
     return EvalResult{true, nullptr, macroexpand(*nth(elements, 1))};
   }
+  if (specialSymbol == TRY_STAR_FORM_SYM) {
+    checkMinArgCount(elements.size() - 1, 1);
+    return EvalResult{true, nullptr, evalTryStar(elements)};
+  }
 
   throw WrongTypeError("a special symbol", Symbol{specialSymbol});
+}
+
+Expr Evaluator::evalTryStar(const ExprList &elements) {
+  const Expr &expr = *nth(elements, 1);
+  if (elements.size() > 2) {
+    checkArgCount(elements.size() - 1, 2);
+
+    const auto &catchExpr = *nth(elements, 2);
+    auto firstSym = firstSymbolOfList(catchExpr);
+    if (!firstSym.has_value() || firstSym.value() != CATCH_STAR_FORM_SYM) {
+      throw MALError("try* must contain catch* form, got: " +
+                     prStr(catchExpr, true));
+    }
+
+    const auto &catchForm = std::get<Box<List>>(catchExpr)->value;
+    checkArgCount(catchForm.size(), 3);
+
+    const auto &catchVal = *nth(catchForm, 1);
+    if (const auto *catchSym = std::get_if<Symbol>(&catchVal)) {
+      Lambda handler{
+          .params = {catchSym->value},
+          .variadic = false,
+          .macro = false,
+          .body = *nth(catchForm, 2),
+          .env = env,
+      };
+      try {
+        return eval(expr);
+      } catch (const MALException &e) {
+        ExprList args{e.getValue()};
+        return apply(handler, args);
+      } catch (const MALError &e) {
+        ExprList args{String{e.what()}};
+        return apply(handler, args);
+      }
+    }
+    throw WrongTypeError("a symbol", catchVal);
+  }
+
+  return eval(expr);
 }
 
 Expr Evaluator::macroexpand(const Expr &expr) {

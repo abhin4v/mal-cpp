@@ -89,7 +89,7 @@ private:
 
   static void checkIndex(const size_t elementCount, const std::int64_t idx) {
     if (idx >= elementCount) {
-      throw MALError("index " + std::to_string(idx) + " is out of bound " +
+      throw MALError("index " + std::to_string(idx) + " is out of bounds " +
                      std::to_string(elementCount));
     }
   }
