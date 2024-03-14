@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "errors.hpp"
+#include "evaluator.hpp"
 #include "printer.hpp"
 #include "types.hpp"
 
@@ -67,6 +68,7 @@ Builtins Core::makeBuiltins() noexcept {
 
                      throw WrongTypeError("a string or keyword", arg);
                    }));
+  builtins.emplace("apply", makeBuiltinFunction("apply", -1, Core::apply));
   return builtins;
 }
 
@@ -133,14 +135,6 @@ void Core::makePrintFunctions(Builtins &builtins) {
 }
 
 void Core::makeCollectionFunctions(Builtins &builtins) {
-  builtins.emplace("empty?",
-                   makeBuiltinFunction<bool>("empty?", [](const Expr &arg) {
-                     return collectionCount(arg) == 0;
-                   }));
-  builtins.emplace("count",
-                   makeBuiltinFunction<Expr>("count", [](const Expr &arg) {
-                     return Int{collectionCount(arg)};
-                   }));
   builtins.emplace(LIST_FN_SYM, makeBuiltinFunction(LIST_FN_SYM, -1,
                                                     [](const ExprList &args) {
                                                       return List{args};
@@ -151,6 +145,16 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
                    }));
   builtins.emplace("hash-map",
                    makeBuiltinFunction("hash-map", -1, makeHashMap));
+
+  builtins.emplace("map", makeBuiltinFunction<Expr>("map", map));
+  builtins.emplace("empty?",
+                   makeBuiltinFunction<bool>("empty?", [](const Expr &arg) {
+                     return collectionCount(arg) == 0;
+                   }));
+  builtins.emplace("count",
+                   makeBuiltinFunction<Expr>("count", [](const Expr &arg) {
+                     return Int{collectionCount(arg)};
+                   }));
   builtins.emplace(
       VEC_FN_SYM, makeBuiltinFunction<Expr>(VEC_FN_SYM, [](const Expr &arg) {
         if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
@@ -242,6 +246,52 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
 
                                  return List{keys};
                                }));
+}
+
+Expr Core::apply(ExprList &args) {
+  const auto argCount = args.size();
+  checkMinArgCount(argCount, 2);
+
+  auto callee = args.front();
+  args.pop_front();
+  auto &lastArg = args.back();
+
+  if (const auto *list = std::get_if<Box<List>>(&lastArg)) {
+    auto &elements = (*list)->value;
+    for (auto iter = std::next(args.rbegin()); iter != args.rend(); ++iter) {
+      elements.push_front(*iter);
+    }
+    return Evaluator::apply(callee, elements);
+  }
+  if (const auto *vector = std::get_if<Box<Vector>>(&lastArg)) {
+    ExprList elements{(*vector)->value.begin(), (*vector)->value.end()};
+    for (auto iter = std::next(args.rbegin()); iter != args.rend(); ++iter) {
+      elements.push_front(*iter);
+    }
+    return Evaluator::apply(callee, elements);
+  }
+
+  throw WrongTypeError("a list", lastArg);
+}
+
+Expr Core::map(const Expr &arg1, const Expr &arg2) {
+  if (const auto *vec = std::get_if<Box<Vector>>(&arg2)) {
+    ExprList ret;
+    for (const auto &element : (*vec)->value) {
+      ExprList args{element};
+      ret.push_back(Evaluator::apply(arg1, args));
+    }
+    return List{ret};
+  }
+  if (const auto *list = std::get_if<Box<List>>(&arg2)) {
+    ExprList ret;
+    for (const auto &element : (*list)->value) {
+      ExprList args{element};
+      ret.push_back(Evaluator::apply(arg1, args));
+    }
+    return List{ret};
+  }
+  throw WrongTypeError("a list or vector", arg2);
 }
 
 Expr Core::nthElement(const Expr &arg1, const Expr &arg2) {

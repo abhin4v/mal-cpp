@@ -29,6 +29,8 @@ private:
   static void makeAtomFunctions(Builtins &builtins);
   static void makeTypePredicateFunctions(Builtins &builtins);
 
+  static Expr apply(ExprList &args);
+  static Expr map(const Expr &arg1, const Expr &arg2);
   static Expr nthElement(const Expr &arg1, const Expr &arg2);
   static Expr firstElement(const Expr &arg);
   static Expr restElements(const Expr &arg);

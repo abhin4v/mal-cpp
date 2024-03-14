@@ -56,7 +56,9 @@ EvalResult Evaluator::doEval(const Expr &expr) {
   if (const auto *list = std::get_if<Box<List>>(&evaluatedExpr)) {
     auto &elements = (*list)->value;
     if (!elements.empty()) {
-      return applyFunction(elements);
+      auto callee = elements.front();
+      elements.pop_front();
+      return applyFunction(callee, elements);
     }
   }
   return EvalResult{true, nullptr, evaluatedExpr};
@@ -103,16 +105,9 @@ Expr Evaluator::macroexpand(const Expr &expr) {
   auto curExpr = expr;
   auto func = findMacroFunc(curExpr);
   while (func.has_value() && func->getRaw().macro) {
-    const auto &list = std::get<Box<List>>(curExpr)->value;
-    ExprList calleeAndArgs{std::next(list.begin()), list.end()};
-    calleeAndArgs.emplace_front(func->getRaw());
-    const auto &result = applyFunction(calleeAndArgs);
-    if (result.evaluated) {
-      curExpr = result.result;
-    } else {
-      Evaluator evaluator(result.env);
-      curExpr = evaluator.eval(result.result);
-    }
+    auto &list = std::get<Box<List>>(curExpr)->value;
+    list.pop_front();
+    curExpr = apply(func->getRaw(), list);
     func = findMacroFunc(curExpr);
   }
 
@@ -341,10 +336,16 @@ Expr Evaluator::quasiquoteList(const List &list) {
   }};
 }
 
-EvalResult Evaluator::applyFunction(ExprList &calleeAndArgs) {
-  const auto callee = std::move(calleeAndArgs.front());
-  calleeAndArgs.pop_front();
-  auto &args = calleeAndArgs;
+Expr Evaluator::apply(const Expr &callee, ExprList &args) {
+  const auto &result = applyFunction(callee, args);
+  if (result.evaluated) {
+    return result.result;
+  }
+  Evaluator evaluator(result.env);
+  return evaluator.eval(result.result);
+}
+
+EvalResult Evaluator::applyFunction(const Expr &callee, ExprList &args) {
   auto argCount = args.size();
 
   if (const auto *funcPtr = std::get_if<Box<BuiltinFunction>>(&callee)) {

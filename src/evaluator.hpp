@@ -79,6 +79,8 @@ public:
 
   Expr eval(const Expr &expr);
 
+  static Expr apply(const Expr &callee, ExprList &args);
+
 private:
   EvalResult doEval(const Expr &expr);
 
@@ -130,7 +132,7 @@ private:
 
   static Expr quasiquoteList(const List &list);
 
-  static EvalResult applyFunction(ExprList &calleeAndArgs);
+  static EvalResult applyFunction(const Expr &callee, ExprList &args);
 
   std::optional<Box<Lambda>> findMacroFunc(const Expr &expr) {
     auto firstSym = firstSymbolOfList(expr);
