@@ -1,5 +1,6 @@
 #include "reader.hpp"
 #include "constants.hpp"
+#include "errors.hpp"
 #include "tokenizer.hpp"
 #include "types.hpp"
 
@@ -44,20 +45,11 @@ Expr Reader::readForm() {
 
     case TokenType::LEFT_BRACE: {
       const auto list = readList(token, TokenType::RIGHT_BRACE);
-      const std::vector<Expr> elements{list.begin(), list.end()};
-      auto elementCount = elements.size();
-      if (elementCount % 2 != 0) {
-        throw ReaderError("odd number of elements in hash-map");
+      try {
+        return makeHashMap(list);
+      } catch (const MALError &err) {
+        throw ReaderError(err.what());
       }
-
-      ExprMap map;
-      map.reserve(elementCount / 2);
-
-      for (auto i = 0; i < elementCount; i += 2) {
-        map[elements[i]] = elements[i + 1];
-      }
-
-      return HashMap{map};
     }
 
     case TokenType::QUOTE: {

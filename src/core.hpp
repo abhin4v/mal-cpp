@@ -27,6 +27,7 @@ private:
   static void makeCollectionFunctions(Builtins &builtins);
   static void makeReadFunctions(Builtins &builtins);
   static void makeAtomFunctions(Builtins &builtins);
+  static void makeTypePredicateFunctions(Builtins &builtins);
 
   static Expr nthElement(const Expr &arg1, const Expr &arg2);
   static Expr firstElement(const Expr &arg);

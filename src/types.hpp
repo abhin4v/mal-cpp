@@ -157,6 +157,8 @@ struct Atom {
   Expr value;
 };
 
+HashMap makeHashMap(const ExprList &elements);
+
 Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
 
 template <typename T>

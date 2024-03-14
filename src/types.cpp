@@ -9,6 +9,25 @@ bool ExprEquals::operator()(const Expr &key1, const Expr &key2) const {
 
 size_t ExprHash::operator()(const Expr &key) const { return exprHash(key); }
 
+HashMap makeHashMap(const ExprList &elements) {
+  auto elementCount = elements.size();
+  if (elementCount % 2 != 0) {
+    throw MALError("odd number of elements in hash-map");
+  }
+
+  ExprMap map;
+  map.reserve(elementCount / 2);
+
+  for (auto iter = elements.begin(); iter != elements.end(); ++iter) {
+    const auto &key = *iter;
+    std::advance(iter, 1);
+    const auto &val = *iter;
+    map[key] = val;
+  }
+
+  return HashMap{map};
+}
+
 Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func) {
   return BuiltinFunction{std::move(name), arity, std::move(func)};
 }
