@@ -166,7 +166,7 @@ private:
     }
 
     if (const auto *lambda = std::get_if<Box<Lambda>>(&val.value().getRaw())) {
-      return std::make_optional(*lambda);
+      return (*lambda)->macro ? std::make_optional(*lambda) : std::nullopt;
     }
 
     return std::nullopt;

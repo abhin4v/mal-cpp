@@ -150,10 +150,10 @@ Expr Evaluator::evalTryStar(const ExprList &elements) {
 Expr Evaluator::macroexpand(const Expr &expr) {
   auto curExpr = expr;
   auto func = findMacroFunc(curExpr);
-  while (func.has_value() && func->getRaw().macro) {
+  while (func.has_value()) {
     auto &list = std::get<Box<List>>(curExpr)->value;
-    list.pop_front();
-    curExpr = apply(func->getRaw(), list);
+    ExprList args{std::next(list.begin()), list.end()};
+    curExpr = apply(func->getRaw(), args);
     func = findMacroFunc(curExpr);
   }
 
@@ -169,16 +169,22 @@ Expr Evaluator::evalDefBang(const ExprList &elements) {
 Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
   checkArgCount(elements.size() - 1, 2);
   const auto &bindingValueExpr = elements.back();
-  auto firstSym = firstSymbolOfList(bindingValueExpr);
-  if (!firstSym.has_value() || firstSym.value() != FN_STAR_FORM_SYM) {
-    throw WrongTypeError("fn* form", bindingValueExpr);
-  }
 
   return std::get<1>(defineBinding(env, *nth(elements, 1), [&]() {
     auto bindingValue = this->eval(bindingValueExpr);
-    const auto &lambda = std::get<Box<Lambda>>(bindingValue);
-    lambda->macro = true;
-    return std::move(bindingValue);
+
+    if (const auto *lambda = std::get_if<Box<Lambda>>(&bindingValue)) {
+      auto firstSym = firstSymbolOfList(bindingValueExpr);
+      if (firstSym.has_value() && firstSym.value() == FN_STAR_FORM_SYM) {
+        (*lambda)->macro = true;
+        return bindingValue;
+      }
+      auto lambdaCopy = lambda->getRaw();
+      lambdaCopy.macro = true;
+      return Expr{lambdaCopy};
+    }
+
+    throw WrongTypeError("a function", bindingValue);
   }));
 }
 
