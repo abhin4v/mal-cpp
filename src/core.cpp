@@ -73,6 +73,16 @@ Builtins Core::makeBuiltins() noexcept {
                      throw MALException(arg);
                      return Expr{Nil::NIL};
                    }));
+  builtins.emplace("readline", makeExprVariantFunc<String, "a string">(
+                                   "readline", Core::readline));
+  builtins.emplace(
+      "time-ms",
+      makeBuiltinFunction("time-ms", 0, [](const ExprList & /*args*/) {
+        namespace chrono = std::chrono;
+        return Int{chrono::duration_cast<chrono::milliseconds>(
+                       chrono::system_clock::now().time_since_epoch())
+                       .count()};
+      }));
   return builtins;
 }
 
@@ -160,6 +170,8 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
         }
         throw WrongTypeError("a list or vector", arg);
       }));
+  builtins.emplace("seq", makeBuiltinFunction<Expr>("seq", Core::seq));
+  builtins.emplace("conj", makeBuiltinFunction("conj", -1, Core::conj));
   builtins.emplace(CONCAT_FN_SYM,
                    makeBuiltinFunction(CONCAT_FN_SYM, -1, concat));
   builtins.emplace(CONS_FN_SYM,
@@ -228,6 +240,10 @@ void Core::makeTypePredicateFunctions(Builtins &builtins) {
       "false?", makeBuiltinFunction<bool>("false?", [](const Expr &arg) {
         return isOfType<Bool>(arg) && std::get<Bool>(arg) == Bool::FALSE;
       }));
+  builtins.emplace("string?",
+                   makeBuiltinFunction<bool>("string?", isOfType<String>));
+  builtins.emplace("number?",
+                   makeBuiltinFunction<bool>("number?", isOfType<Int>));
   builtins.emplace("symbol?",
                    makeBuiltinFunction<bool>("symbol?", isOfType<Symbol>));
   builtins.emplace("keyword?",
@@ -241,11 +257,30 @@ void Core::makeTypePredicateFunctions(Builtins &builtins) {
   builtins.emplace("map?",
                    makeBuiltinFunction<bool>("map?", isOfType<Box<HashMap>>));
 
+  builtins.emplace("fn?", makeBuiltinFunction<bool>("fn?", [](const Expr &arg) {
+                     return isOfType<Box<BuiltinFunction>>(arg) ||
+                            (isOfType<Box<Lambda>>(arg) &&
+                             !std::get<Box<Lambda>>(arg)->macro);
+                   }));
+  builtins.emplace(
+      "macro?", makeBuiltinFunction<bool>("macro?", [](const Expr &arg) {
+        return isOfType<Box<Lambda>>(arg) && std::get<Box<Lambda>>(arg)->macro;
+      }));
   builtins.emplace(
       "sequential?",
       makeBuiltinFunction<bool>("sequential?", [](const Expr &arg) {
         return isOfType<Box<List>>(arg) || isOfType<Box<Vector>>(arg);
       }));
+}
+
+Expr Core::readline(const String &str) {
+  std::cout << str.value;
+  std::string line;
+  std::getline(std::cin, line);
+  if (std::cin.eof()) {
+    return Expr{Nil::NIL};
+  }
+  return Expr{String{line}};
 }
 
 Expr Core::apply(ExprList &args) {
@@ -295,7 +330,7 @@ Expr Core::map(const Expr &arg1, const Expr &arg2) {
 }
 
 std::int64_t Core::collectionCount(const Expr &arg) {
-  if (std::holds_alternative<Nil>(arg)) {
+  if (isOfType<Nil>(arg)) {
     return 0;
   }
   if (const auto *list = std::get_if<Box<List>>(&arg)) {
@@ -354,7 +389,7 @@ Expr Core::nthElement(const Expr &arg1, const Expr &arg2) {
 
 Expr Core::firstElement(const Expr &arg) {
   Expr nil = Nil::NIL;
-  if (std::holds_alternative<Nil>(arg)) {
+  if (isOfType<Nil>(arg)) {
     return nil;
   }
 
@@ -373,7 +408,7 @@ Expr Core::firstElement(const Expr &arg) {
 
 Expr Core::restElements(const Expr &arg) {
   Expr emptyList = List{{}};
-  if (std::holds_alternative<Nil>(arg)) {
+  if (isOfType<Nil>(arg)) {
     return emptyList;
   }
 
@@ -392,6 +427,61 @@ Expr Core::restElements(const Expr &arg) {
   }
 
   throw WrongTypeError("a list or vector", arg);
+}
+
+Expr Core::seq(const Expr &arg) {
+  if (isOfType<Nil>(arg)) {
+    return arg;
+  }
+  if (const auto *list = std::get_if<Box<List>>(&arg)) {
+    if ((*list)->value.empty()) {
+      return Nil::NIL;
+    }
+    return arg;
+  }
+  if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
+    if ((*vec)->value.empty()) {
+      return Nil::NIL;
+    }
+    return List{ExprList{(*vec)->value.begin(), (*vec)->value.end()}};
+  }
+  if (const auto *str = std::get_if<String>(&arg)) {
+    if (str->value.empty()) {
+      return Nil::NIL;
+    }
+    ExprList list;
+    for (auto chr : str->value) {
+      list.push_back(String{std::string(1, chr)});
+    }
+    return List{list};
+  }
+  throw WrongTypeError("a list, vector or string", arg);
+}
+
+Expr Core::conj(ExprList &args) {
+  checkMinArgCount(args.size(), 2);
+  const auto coll = args.front();
+  args.pop_front();
+
+  if (const auto *vec = std::get_if<Box<Vector>>(&coll)) {
+    const auto &elements = (*vec)->value;
+    ExprVec newElements{elements.begin(), elements.end()};
+    for (const auto &arg : args) {
+      newElements.push_back(arg);
+    }
+    return Vector{newElements};
+  }
+
+  if (const auto *list = std::get_if<Box<List>>(&coll)) {
+    const auto &elements = (*list)->value;
+    ExprList newElements{elements.begin(), elements.end()};
+    for (const auto &arg : args) {
+      newElements.push_front(arg);
+    }
+    return List{newElements};
+  }
+
+  throw WrongTypeError("a list or vector", coll);
 }
 
 Expr Core::assoc(ExprList &args) {
@@ -460,9 +550,10 @@ Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {
         args.pop_front();
 
         if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
-          args.insert(std::next(args.begin()), (*atom)->value);
+          const auto callee = std::move(args.front());
+          args.front() = (*atom)->value;
 
-          auto newValue = eval(List{args});
+          auto newValue = Evaluator::apply(callee, args);
           (*atom)->value = newValue;
           return newValue;
         }

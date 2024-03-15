@@ -29,6 +29,7 @@ private:
   static void makeAtomFunctions(Builtins &builtins);
   static void makeTypePredicateFunctions(Builtins &builtins);
 
+  static Expr readline(const String &str);
   static Expr apply(ExprList &args);
   static Expr map(const Expr &arg1, const Expr &arg2);
   static std::int64_t collectionCount(const Expr &arg);
@@ -36,6 +37,8 @@ private:
   static Expr nthElement(const Expr &arg1, const Expr &arg2);
   static Expr firstElement(const Expr &arg);
   static Expr restElements(const Expr &arg);
+  static Expr seq(const Expr &arg);
+  static Expr conj(ExprList &args);
   static Expr assoc(ExprList &args);
   static Expr dissoc(ExprList &args);
   static Expr get(const Expr &arg1, const Expr &arg2);
