@@ -28,13 +28,6 @@ public:
                   const Box<BuiltinFunction> &func2) const {
     return func1->name == func2->name && func1->arity == func2->arity;
   }
-  bool operator()(const Lambda & /*func1*/, const Lambda & /*func2*/) const {
-    return false;
-  }
-  bool operator()(const Box<MetaData> &expr1,
-                  const Box<MetaData> &expr2) const {
-    return equateExpr(expr1->value, expr2->value);
-  }
   bool operator()(const Box<List> &list1, const Box<List> &list2) const {
     return equateElements(list1->value, list2->value);
   }

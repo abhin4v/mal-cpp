@@ -79,7 +79,9 @@ Expr Reader::readForm() {
 
     case TokenType::CARET: {
       advance();
-      return MetaData{readForm(), readForm()};
+      auto meta = readForm();
+      auto data = readForm();
+      return List{{Symbol{WITH_META_FN_SYM}, std::move(data), std::move(meta)}};
     }
 
     default:

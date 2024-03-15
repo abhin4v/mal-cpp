@@ -1,2 +1,2 @@
 step%:
-	just build $@
+	true

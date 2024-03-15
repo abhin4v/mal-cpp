@@ -1,4 +1,6 @@
 #include "core.hpp"
+#include "constants.hpp"
+#include "env.hpp"
 #include "errors.hpp"
 #include "evaluator.hpp"
 #include "printer.hpp"
@@ -67,7 +69,8 @@ Builtins Core::makeBuiltins() noexcept {
                      }
                      throw WrongTypeError("a string or keyword", arg);
                    }));
-  builtins.emplace("apply", makeBuiltinFunction("apply", -1, Core::apply));
+  builtins.emplace(APPLY_FN_SYM,
+                   makeBuiltinFunction(APPLY_FN_SYM, -1, Core::apply));
   builtins.emplace("throw",
                    makeBuiltinFunction<Expr>("throw", [](const Expr &arg) {
                      throw MALException(arg);
@@ -83,6 +86,7 @@ Builtins Core::makeBuiltins() noexcept {
                        chrono::system_clock::now().time_since_epoch())
                        .count()};
       }));
+  builtins.emplace("meta", makeBuiltinFunction<Expr>("meta", Core::meta));
   return builtins;
 }
 
@@ -450,9 +454,9 @@ Expr Core::seq(const Expr &arg) {
       return Nil::NIL;
     }
     ExprList list;
-    for (auto chr : str->value) {
-      list.push_back(String{std::string(1, chr)});
-    }
+    std::transform(str->value.begin(), str->value.end(),
+                   std::back_inserter(list),
+                   [](auto chr) { return String{std::string(1, chr)}; });
     return List{list};
   }
   throw WrongTypeError("a list, vector or string", arg);
@@ -466,18 +470,17 @@ Expr Core::conj(ExprList &args) {
   if (const auto *vec = std::get_if<Box<Vector>>(&coll)) {
     const auto &elements = (*vec)->value;
     ExprVec newElements{elements.begin(), elements.end()};
-    for (const auto &arg : args) {
-      newElements.push_back(arg);
-    }
+
+    std::transform(args.begin(), args.end(), std::back_inserter(newElements),
+                   std::identity());
     return Vector{newElements};
   }
 
   if (const auto *list = std::get_if<Box<List>>(&coll)) {
     const auto &elements = (*list)->value;
     ExprList newElements{elements.begin(), elements.end()};
-    for (const auto &arg : args) {
-      newElements.push_front(arg);
-    }
+    std::transform(args.begin(), args.end(), std::front_inserter(newElements),
+                   std::identity());
     return List{newElements};
   }
 
@@ -540,6 +543,69 @@ Expr Core::vals(const Box<HashMap> &hashmap) {
                  std::back_inserter(vals),
                  [](const auto &entry) { return entry.second; });
   return List{vals};
+}
+Expr Core::meta(const Expr &arg) {
+  if (isOfType<Box<BuiltinFunction>>(arg)) {
+    return Nil::NIL;
+  }
+  if (const auto *lambda = std::get_if<Box<Lambda>>(&arg)) {
+    return (*lambda)->metadata;
+  }
+  if (const auto *list = std::get_if<Box<List>>(&arg)) {
+    return (*list)->metadata;
+  }
+  if (const auto *vector = std::get_if<Box<Vector>>(&arg)) {
+    return (*vector)->metadata;
+  }
+  if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg)) {
+    return (*hashmap)->metadata;
+  }
+
+  throw WrongTypeError("a function, list, vector or hashmap", arg);
+}
+
+Expr Core::makeWithMetaFunction(const EnvPtr &env) {
+  return makeBuiltinFunction(WITH_META_FN_SYM, 2, [&](ExprList &args) {
+    checkArgCount(args.size(), 2);
+    const auto &arg1 = args.front();
+    const auto &arg2 = args.back();
+
+    if (const auto *funcPtr = std::get_if<Box<BuiltinFunction>>(&arg1)) {
+      const auto func = funcPtr->getRaw();
+      Lambda lambda{
+          .params = std::vector<std::string>{{"args"}},
+          .variadic = true,
+          .macro = false,
+          .body =
+              List{{Symbol{APPLY_FN_SYM}, Symbol{func.name}, Symbol{"args"}}},
+          .env = env,
+          .metadata = arg2,
+      };
+      return Expr{lambda};
+    }
+    if (const auto *lambda = std::get_if<Box<Lambda>>(&arg1)) {
+      auto lambdaCopy = (*lambda).getRaw();
+      lambdaCopy.metadata = arg2;
+      return Expr{lambdaCopy};
+    }
+    if (const auto *list = std::get_if<Box<List>>(&arg1)) {
+      auto listCopy = (*list).getRaw();
+      listCopy.metadata = arg2;
+      return Expr{listCopy};
+    }
+    if (const auto *vector = std::get_if<Box<Vector>>(&arg1)) {
+      auto vectorCopy = (*vector).getRaw();
+      vectorCopy.metadata = arg2;
+      return Expr{vectorCopy};
+    }
+    if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg1)) {
+      auto hashmapCopy = (*hashmap).getRaw();
+      hashmapCopy.metadata = arg2;
+      return Expr{hashmapCopy};
+    }
+
+    throw WrongTypeError("a function, list, vector or hashmap", arg1);
+  });
 }
 
 Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {

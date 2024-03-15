@@ -57,17 +57,37 @@ _run target *args:
 # runs a target
 run target *args: (build target) (_run target args)
 
-# tests a target
-test target:
+_test target:
   cd ../.. && make test^cpp^{{replace_regex(target, '_.+', '')}}
 
-_all-targets:
-  find src -maxdepth 1 -name 'step*.cpp' -type f -print | cut -d '/' -f 2 | cut -d '.' -f 1 | sort
+# tests a target
+test target: (build target) (_test target)
+
+_test-self-hosted target:
+  cd ../.. && make MAL_IMPL=cpp test^mal^{{replace_regex(target, '_.+', '')}}
+
+# test a target on self-hosted interpreter
+test-self-hosted target: (build "stepA_mal") (_test-self-hosted target)
+
+_all-targets dir ext:
+  find {{dir}} -maxdepth 1 -name 'step*.{{ext}}' -type f -print | xargs -I {} basename {} | cut -d '.' -f 1 | sort
 
 # tests all targets
 test-all: (build "all")
-  just _all-targets | xargs -I {} just test {}
+  just _all-targets src cpp | xargs -I {} just _test {}
 
+# tests all targets on self-hosted interpreter
+test-self-hosted-all: (build "stepA_mal")
+  just _all-targets ../../impls/mal mal | xargs -I {} just _test-self-hosted {}
+
+# tests everything
+test-everything: test-all test-self-hosted-all
+
+# runs performance benchmarks
+perf: (build-release "stepA_mal")
+  cd ../.. && make perf^cpp
+
+# runs linters
 @lint:
   echo "============================= FLAWFINDER =============================="
   flawfinder -m0 src/*

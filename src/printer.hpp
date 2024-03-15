@@ -51,10 +51,6 @@ public:
                       '{', '}');
   }
 
-  std::string operator()(const MetaData &expr) const {
-    return "(with-meta " + prExpr(expr.value) + " " + prExpr(expr.meta) + ")";
-  }
-
   std::string operator()(const Atom &expr) const {
     return "(atom " + prExpr(expr.value) + ")";
   }

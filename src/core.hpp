@@ -1,6 +1,7 @@
 #pragma once
 
 #include "constants.hpp"
+#include "env.hpp"
 #include "equator.hpp"
 #include "printer.hpp"
 #include "reader.hpp"
@@ -44,6 +45,7 @@ private:
   static Expr get(const Expr &arg1, const Expr &arg2);
   static Expr keys(const Box<HashMap> &hashmap);
   static Expr vals(const Box<HashMap> &hashmap);
+  static Expr meta(const Expr &arg);
 
   static std::string toString(const ExprList &args, bool printReadably,
                               const std::string &separator) {
@@ -70,6 +72,7 @@ private:
 public:
   static Builtins ns() { return builtins; }
 
+  static Expr makeWithMetaFunction(const EnvPtr &env);
   static Expr makeSwapBangFunction(std::function<Expr(const Expr &)> eval);
 
   static constexpr auto NOT_FUNC = "(def! not (fn* (a) (if a false true)))";

@@ -53,7 +53,6 @@ public:
   Expr operator()(const BuiltinFunction &func) const { return func; }
   Expr operator()(const Lambda &lambda) const { return lambda; }
   Expr operator()(const Atom &expr) const { return expr; }
-  Expr operator()(const MetaData &expr) { return this->eval(expr.value); }
 
   Expr operator()(const Symbol &sym) const {
     return env->get(sym.value).getRaw();

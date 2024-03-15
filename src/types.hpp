@@ -78,8 +78,8 @@ struct MetaData;
 struct Atom;
 
 using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
-                          Box<Vector>, Box<HashMap>, Box<MetaData>,
-                          Box<BuiltinFunction>, Box<Lambda>, Box<Atom>>;
+                          Box<Vector>, Box<HashMap>, Box<BuiltinFunction>,
+                          Box<Lambda>, Box<Atom>>;
 
 using ExprPtr = Box<Expr>;
 
@@ -131,26 +131,25 @@ struct Lambda {
   bool macro;
   Expr body;
   std::shared_ptr<Env> env;
+  Expr metadata = Nil::NIL;
 };
 
 struct List {
   ExprList value{};
+  Expr metadata = Nil::NIL;
   explicit List(ExprList value) : value(std::move(value)) {}
 };
 
 struct Vector {
   ExprVec value{};
+  Expr metadata = Nil::NIL;
   explicit Vector(ExprVec value) : value(std::move(value)) {}
 };
 
 struct HashMap {
   ExprMap value{};
+  Expr metadata = Nil::NIL;
   explicit HashMap(ExprMap value) : value(std::move(value)) {}
-};
-
-struct MetaData {
-  Expr meta;
-  Expr value;
 };
 
 struct Atom {
