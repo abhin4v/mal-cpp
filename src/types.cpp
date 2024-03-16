@@ -2,6 +2,7 @@
 #include "equator.hpp"
 #include "hasher.hpp"
 #include "printer.hpp"
+#include <immer/algorithm.hpp>
 
 bool ExprEquals::operator()(const Expr &key1, const Expr &key2) const {
   return exprEquals(key1, key2);
@@ -16,13 +17,12 @@ HashMap makeHashMap(const ExprList &elements) {
   }
 
   ExprMap map;
-  map.reserve(elementCount / 2);
 
   for (auto iter = elements.begin(); iter != elements.end(); ++iter) {
     const auto &key = *iter;
     std::advance(iter, 1);
     const auto &val = *iter;
-    map[key] = val;
+    map = std::move(map).set(key, val);
   }
 
   return HashMap{map};
@@ -56,13 +56,7 @@ namespace {
 template <typename T>
 T applyBinaryFunction(const BinaryExprFunction<T> &func, const ExprList &args) {
   checkArgCount(args.size(), 2);
-
-  const auto &arg1 = args.front();
-  auto iter = args.begin();
-  std::advance(iter, 1);
-  const auto &arg2 = *iter;
-
-  return func(arg1, arg2);
+  return func(args.front(), args.back());
 }
 
 template <typename T>
@@ -116,21 +110,12 @@ Expr makeBuiltinFunction<Expr>(const std::string &name,
 Expr makeBuiltinFunction(const std::string &name,
                          VariadicIntFunction<std::int64_t> func) {
   auto exprFunc = [func = std::move(func)](const ExprList &args) {
-    std::vector<std::int64_t> intArgs;
-    intArgs.reserve(args.size());
-    std::transform(args.begin(), args.end(), std::back_inserter(intArgs),
-                   [](auto arg) { return intVal(arg); });
-
-    return Int{func(intArgs)};
+    return Int{func(immer::accumulate(
+        args, immer::vector<std::int64_t>{},
+        [](auto acc, const auto &arg) { return acc.push_back(intVal(arg)); }))};
   };
 
   return makeBuiltinFunction(name, -1, exprFunc);
-}
-
-Expr const *nth(const ExprList &exprs, size_t n) {
-  auto iter = exprs.begin();
-  std::advance(iter, n);
-  return &*iter;
 }
 
 void checkArgCount(size_t argCount, size_t expected) {

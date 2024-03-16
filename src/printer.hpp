@@ -46,9 +46,9 @@ public:
   }
 
   std::string operator()(const HashMap &hashmap) const {
-    return prListLike(flattenKeyValuePairs(std::vector<std::pair<Expr, Expr>>(
-                          hashmap.value.begin(), hashmap.value.end())),
-                      '{', '}');
+    return prListLike(
+        flattenKeyValuePairs({hashmap.value.begin(), hashmap.value.end()}), '{',
+        '}');
   }
 
   std::string operator()(const Atom &expr) const {
@@ -117,12 +117,11 @@ private:
 
   static ExprList
   flattenKeyValuePairs(const std::vector<std::pair<Expr, Expr>> &pairs) {
-    ExprList vec;
+    ExprList list;
     for (const auto &pair : pairs) {
-      vec.push_back(pair.first);
-      vec.push_back(pair.second);
+      list = std::move(list).push_back(pair.first).push_back(pair.second);
     }
-    return vec;
+    return list;
   }
 };
 

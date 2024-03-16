@@ -47,7 +47,7 @@ public:
     }
 
     for (const auto &[key, value] : hm1->value) {
-      if (!hm2->value.contains(key)) {
+      if (hm2->value.find(key) == nullptr) {
         return false;
       }
 

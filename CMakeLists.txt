@@ -13,7 +13,7 @@ project(mal
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LINENOISE REQUIRED linenoise)
 
-find_package(absl REQUIRED)
+find_package(immer REQUIRED)
 
 add_library(mal-tokenizer OBJECT src/tokenizer.cpp)
 add_library(mal-reader OBJECT src/reader.cpp)

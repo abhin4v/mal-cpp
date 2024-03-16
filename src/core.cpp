@@ -92,14 +92,15 @@ Builtins Core::makeBuiltins() noexcept {
 
 void Core::makeArithmeticFunctions(Builtins &builtins) {
   builtins.emplace(
-      "+", makeBuiltinFunction("+", [](const std::vector<std::int64_t> &args) {
+      "+",
+      makeBuiltinFunction("+", [](const immer::vector<std::int64_t> &args) {
         return std::accumulate(args.begin(), args.end(), 0LL);
       }));
-  builtins.emplace(
-      "*", makeBuiltinFunction("*", [](const std::vector<std::int64_t> &args) {
-        return std::accumulate(args.begin(), args.end(), 1LL,
-                               std::multiplies<>());
-      }));
+  builtins.emplace("*", makeBuiltinFunction(
+                            "*", [](const immer::vector<std::int64_t> &args) {
+                              return std::accumulate(args.begin(), args.end(),
+                                                     1LL, std::multiplies<>());
+                            }));
   builtins.emplace("-", makeBuiltinFunction<std::int64_t>("-", std::minus<>()));
   builtins.emplace("/",
                    makeBuiltinFunction<std::int64_t>("/", std::divides<>()));
@@ -181,7 +182,7 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
   builtins.emplace(CONS_FN_SYM,
                    makeBuiltinFunction<Expr>(
                        CONS_FN_SYM, [](const Expr &arg1, const Expr &arg2) {
-                         return concat(ExprList{List{ExprList{arg1}}, arg2});
+                         return concat({List{{arg1}}, arg2});
                        }));
   builtins.emplace("nth", makeBuiltinFunction<Expr>("nth", Core::nthElement));
   builtins.emplace("first",
@@ -195,8 +196,9 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
   builtins.emplace("contains?",
                    makeExprVariantFunc<Box<HashMap>, "a hashmap">(
                        "contains?", [](const auto &hashmap, const Expr &arg2) {
-                         return hashmap->value.contains(arg2) ? Bool::TRUE
-                                                              : Bool::FALSE;
+                         return hashmap->value.find(arg2) != nullptr
+                                    ? Bool::TRUE
+                                    : Bool::FALSE;
                        }));
   builtins.emplace("keys", makeExprVariantFunc<Box<HashMap>, "a hashmap">(
                                "keys", Core::keys));
@@ -287,25 +289,29 @@ Expr Core::readline(const String &str) {
   return Expr{String{line}};
 }
 
-Expr Core::apply(ExprList &args) {
+Expr Core::apply(const ExprList &args) {
   const auto argCount = args.size();
   checkMinArgCount(argCount, 2);
 
-  auto callee = args.front();
-  args.pop_front();
-  auto &lastArg = args.back();
+  const auto &callee = args.front();
+  const auto &lastArg = args.back();
+  const auto &calleeArgs = args.drop(1);
 
   if (const auto *list = std::get_if<Box<List>>(&lastArg)) {
-    auto &elements = (*list)->value;
-    for (auto iter = std::next(args.rbegin()); iter != args.rend(); ++iter) {
-      elements.push_front(*iter);
+    auto elements = (*list)->value;
+
+    for (auto iter = std::next(calleeArgs.rbegin()); iter != calleeArgs.rend();
+         ++iter) {
+      elements = std::move(elements).push_front(*iter);
     }
     return Evaluator::apply(callee, elements);
   }
+
   if (const auto *vector = std::get_if<Box<Vector>>(&lastArg)) {
-    ExprList elements{(*vector)->value.begin(), (*vector)->value.end()};
-    for (auto iter = std::next(args.rbegin()); iter != args.rend(); ++iter) {
-      elements.push_front(*iter);
+    ExprList elements = (*vector)->value;
+    for (auto iter = std::next(calleeArgs.rbegin()); iter != calleeArgs.rend();
+         ++iter) {
+      elements = std::move(elements).push_front(*iter);
     }
     return Evaluator::apply(callee, elements);
   }
@@ -313,22 +319,21 @@ Expr Core::apply(ExprList &args) {
   throw WrongTypeError("a list", lastArg);
 }
 
+namespace {
+Expr doMap(auto begin, auto end, const Expr &func) {
+  return List{immer::accumulate(
+      begin, end, ExprList{}, [&](const auto acc, const auto &element) {
+        return acc.push_back(Evaluator::apply(func, {element}));
+      })};
+}
+} // namespace
+
 Expr Core::map(const Expr &arg1, const Expr &arg2) {
   if (const auto *vec = std::get_if<Box<Vector>>(&arg2)) {
-    ExprList ret;
-    for (const auto &element : (*vec)->value) {
-      ExprList args{element};
-      ret.push_back(Evaluator::apply(arg1, args));
-    }
-    return List{ret};
+    return doMap((*vec)->value.begin(), (*vec)->value.end(), arg1);
   }
   if (const auto *list = std::get_if<Box<List>>(&arg2)) {
-    ExprList ret;
-    for (const auto &element : (*list)->value) {
-      ExprList args{element};
-      ret.push_back(Evaluator::apply(arg1, args));
-    }
-    return List{ret};
+    return doMap((*list)->value.begin(), (*list)->value.end(), arg1);
   }
   throw WrongTypeError("a list or vector", arg2);
 }
@@ -357,12 +362,11 @@ Expr Core::concat(const ExprList &args) {
   ExprList newList;
   for (const auto &arg : args) {
     if (const auto *list = std::get_if<Box<List>>(&arg)) {
-      newList.insert(newList.end(), (*list)->value.begin(),
-                     (*list)->value.end());
+      newList = std::move(newList) + (*list)->value;
       continue;
     }
     if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
-      newList.insert(newList.end(), (*vec)->value.begin(), (*vec)->value.end());
+      newList = std::move(newList) + (*vec)->value;
       continue;
     }
     throw WrongTypeError("a list or vector", arg);
@@ -382,7 +386,7 @@ Expr Core::nthElement(const Expr &arg1, const Expr &arg2) {
     if (const auto *list = std::get_if<Box<List>>(&arg1)) {
       const auto &elements = (*list)->value;
       checkIndex(elements.size(), idx);
-      return *nth(elements, idx);
+      return elements.at(idx);
     }
 
     throw WrongTypeError("a list or vector", arg1);
@@ -417,17 +421,13 @@ Expr Core::restElements(const Expr &arg) {
   }
 
   if (const auto *vec = std::get_if<Box<Vector>>(&arg)) {
-    const auto &elements = (*vec)->value;
-    return elements.empty()
-               ? emptyList
-               : List{ExprList{std::next(elements.begin()), elements.end()}};
+    const ExprList elements = (*vec)->value;
+    return elements.empty() ? emptyList : List{elements.drop(1)};
   }
 
   if (const auto *list = std::get_if<Box<List>>(&arg)) {
     const auto &elements = (*list)->value;
-    return elements.empty()
-               ? emptyList
-               : List{ExprList{std::next(elements.begin()), elements.end()}};
+    return elements.empty() ? emptyList : List{elements.drop(1)};
   }
 
   throw WrongTypeError("a list or vector", arg);
@@ -447,70 +447,62 @@ Expr Core::seq(const Expr &arg) {
     if ((*vec)->value.empty()) {
       return Nil::NIL;
     }
-    return List{ExprList{(*vec)->value.begin(), (*vec)->value.end()}};
+    return List{(*vec)->value};
   }
   if (const auto *str = std::get_if<String>(&arg)) {
     if (str->value.empty()) {
       return Nil::NIL;
     }
     ExprList list;
-    std::transform(str->value.begin(), str->value.end(),
-                   std::back_inserter(list),
-                   [](auto chr) { return String{std::string(1, chr)}; });
+    for (const char chr : str->value) {
+      list = std::move(list).push_back(String{std::string(1, chr)});
+    }
+
     return List{list};
   }
   throw WrongTypeError("a list, vector or string", arg);
 }
 
-Expr Core::conj(ExprList &args) {
+Expr Core::conj(const ExprList &args) {
   checkMinArgCount(args.size(), 2);
-  const auto coll = args.front();
-  args.pop_front();
+  const auto &coll = args.front();
+  const auto &values = args.drop(1);
 
   if (const auto *vec = std::get_if<Box<Vector>>(&coll)) {
-    const auto &elements = (*vec)->value;
-    ExprVec newElements{elements.begin(), elements.end()};
-
-    std::transform(args.begin(), args.end(), std::back_inserter(newElements),
-                   std::identity());
-    return Vector{newElements};
+    const auto elements = (*vec)->value + values;
+    return Vector{{elements.begin(), elements.end()}};
   }
 
   if (const auto *list = std::get_if<Box<List>>(&coll)) {
-    const auto &elements = (*list)->value;
-    ExprList newElements{elements.begin(), elements.end()};
-    std::transform(args.begin(), args.end(), std::front_inserter(newElements),
-                   std::identity());
-    return List{newElements};
+    return List{ExprList{values.rbegin(), values.rend()} + (*list)->value};
   }
 
   throw WrongTypeError("a list or vector", coll);
 }
 
-Expr Core::assoc(ExprList &args) {
+Expr Core::assoc(const ExprList &args) {
   checkMinArgCount(args.size(), 1);
 
   if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
-    ExprMap map{(*hashmap)->value};
-    args.pop_front();
-    auto assocs = makeHashMap(args);
-    assocs.value.merge(map);
-    return HashMap{assocs};
+    auto map = (*hashmap)->value;
+    auto assocs = makeHashMap(args.drop(1));
+    for (const auto &entry : assocs.value) {
+      map = std::move(map).set(entry.first, entry.second);
+    }
+
+    return HashMap{map};
   }
 
   throw WrongTypeError("a hashmap", args.front());
 }
 
-Expr Core::dissoc(ExprList &args) {
+Expr Core::dissoc(const ExprList &args) {
   checkMinArgCount(args.size(), 1);
 
   if (const auto *hashmap = std::get_if<Box<HashMap>>(&args.front())) {
-    ExprMap map{(*hashmap)->value};
-    args.pop_front();
-    for (const auto &key : args) {
-      map.erase(key);
-    }
-    return HashMap{map};
+    return HashMap{immer::accumulate(
+        args.drop(1), (*hashmap)->value,
+        [](auto acc, const auto &key) { return acc.erase(key); })};
   }
 
   throw WrongTypeError("a hashmap", args.front());
@@ -522,28 +514,25 @@ Expr Core::get(const Expr &arg1, const Expr &arg2) {
   }
 
   if (const auto *hashmap = std::get_if<Box<HashMap>>(&arg1)) {
-    return (*hashmap)->value.contains(arg2) ? (*hashmap)->value.at(arg2)
-                                            : Expr{Nil::NIL};
+    return (*hashmap)->value.find(arg2) != nullptr ? (*hashmap)->value.at(arg2)
+                                                   : Expr{Nil::NIL};
   }
 
   throw WrongTypeError("a hashmap", arg1);
 }
 
 Expr Core::keys(const Box<HashMap> &hashmap) {
-  ExprList keys;
-  std::transform(hashmap->value.begin(), hashmap->value.end(),
-                 std::back_inserter(keys),
-                 [](const auto &entry) { return entry.first; });
-  return List{keys};
+  return List{immer::accumulate(
+      hashmap->value, ExprList{},
+      [](auto acc, const auto &entry) { return acc.push_back(entry.first); })};
 }
 
 Expr Core::vals(const Box<HashMap> &hashmap) {
-  ExprList vals;
-  std::transform(hashmap->value.begin(), hashmap->value.end(),
-                 std::back_inserter(vals),
-                 [](const auto &entry) { return entry.second; });
-  return List{vals};
+  return List{immer::accumulate(
+      hashmap->value, ExprList{},
+      [](auto acc, const auto &entry) { return acc.push_back(entry.second); })};
 }
+
 Expr Core::meta(const Expr &arg) {
   if (isOfType<Box<BuiltinFunction>>(arg)) {
     return Nil::NIL;
@@ -565,7 +554,7 @@ Expr Core::meta(const Expr &arg) {
 }
 
 Expr Core::makeWithMetaFunction(const EnvPtr &env) {
-  return makeBuiltinFunction(WITH_META_FN_SYM, 2, [&](ExprList &args) {
+  return makeBuiltinFunction(WITH_META_FN_SYM, 2, [&](const ExprList &args) {
     checkArgCount(args.size(), 2);
     const auto &arg1 = args.front();
     const auto &arg2 = args.back();
@@ -573,7 +562,7 @@ Expr Core::makeWithMetaFunction(const EnvPtr &env) {
     if (const auto *funcPtr = std::get_if<Box<BuiltinFunction>>(&arg1)) {
       const auto func = funcPtr->getRaw();
       Lambda lambda{
-          .params = std::vector<std::string>{{"args"}},
+          .params = immer::vector<std::string>{{"args"}},
           .variadic = true,
           .macro = false,
           .body =
@@ -610,16 +599,15 @@ Expr Core::makeWithMetaFunction(const EnvPtr &env) {
 
 Expr Core::makeSwapBangFunction(std::function<Expr(const Expr &)> eval) {
   return makeBuiltinFunction(
-      SWAP_BANG_FN_SYM, -1, [eval = std::move(eval)](ExprList &args) {
+      SWAP_BANG_FN_SYM, -1, [eval = std::move(eval)](const ExprList &args) {
         checkMinArgCount(args.size(), 2);
-        const auto arg = std::move(args.front());
-        args.pop_front();
+        const auto &arg = args.front();
+        const auto &swapArgs = args.drop(1);
 
         if (const auto *atom = std::get_if<Box<Atom>>(&arg)) {
-          const auto callee = std::move(args.front());
-          args.front() = (*atom)->value;
-
-          auto newValue = Evaluator::apply(callee, args);
+          const auto &callee = swapArgs.front();
+          auto newValue = Evaluator::apply(
+              callee, swapArgs.drop(1).push_front((*atom)->value));
           (*atom)->value = newValue;
           return newValue;
         }

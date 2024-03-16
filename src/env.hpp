@@ -3,6 +3,7 @@
 #include "constants.hpp"
 #include "printer.hpp"
 #include "types.hpp"
+#include <immer/flex_vector.hpp>
 #include <memory>
 #include <optional>
 #include <string>
@@ -21,11 +22,9 @@ public:
 
   void set(const std::string &name, const Expr &expr) {
     if (const auto *list = std::get_if<Box<List>>(&expr)) {
-      ExprList elements{this->get(LIST_FN_SYM)};
-      elements.insert(elements.end(), (*list)->value.begin(),
-                      (*list)->value.end());
-      const Expr &listCopy = List{elements};
-      data.insert_or_assign(name, Box(listCopy));
+      data.insert_or_assign(
+          name,
+          Box{Expr{List{(*list)->value.push_front(this->get(LIST_FN_SYM))}}});
       return;
     }
     data.insert_or_assign(name, Box(expr));
@@ -35,13 +34,7 @@ public:
     const auto *env = this;
     while (env != nullptr) {
       if (env->data.contains(name)) {
-        const auto &val = env->data.at(name);
-        if (const auto *list = std::get_if<Box<List>>(&(val.getRaw()))) {
-          const Expr &listCopy =
-              List{ExprList{(*list)->value.begin(), (*list)->value.end()}};
-          return std::make_optional(Box(listCopy));
-        }
-        return std::make_optional(val);
+        return std::make_optional(env->data.at(name));
       }
       env = (env->outer).get();
     }

@@ -31,7 +31,7 @@ private:
   static void makeTypePredicateFunctions(Builtins &builtins);
 
   static Expr readline(const String &str);
-  static Expr apply(ExprList &args);
+  static Expr apply(const ExprList &args);
   static Expr map(const Expr &arg1, const Expr &arg2);
   static std::int64_t collectionCount(const Expr &arg);
   static Expr concat(const ExprList &args);
@@ -39,9 +39,9 @@ private:
   static Expr firstElement(const Expr &arg);
   static Expr restElements(const Expr &arg);
   static Expr seq(const Expr &arg);
-  static Expr conj(ExprList &args);
-  static Expr assoc(ExprList &args);
-  static Expr dissoc(ExprList &args);
+  static Expr conj(const ExprList &args);
+  static Expr assoc(const ExprList &args);
+  static Expr dissoc(const ExprList &args);
   static Expr get(const Expr &arg1, const Expr &arg2);
   static Expr keys(const Box<HashMap> &hashmap);
   static Expr vals(const Box<HashMap> &hashmap);

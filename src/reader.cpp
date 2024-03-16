@@ -106,8 +106,7 @@ ExprList Reader::readList(const Token &startDelimToken,
         return elements;
       }
 
-      auto expr = readForm();
-      elements.push_back(expr);
+      elements = std::move(elements).push_back(readForm());
       continue;
     }
 

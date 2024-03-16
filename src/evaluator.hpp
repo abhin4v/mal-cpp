@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <exception>
 #include <functional>
+#include <immer/algorithm.hpp>
 #include <iterator>
 #include <optional>
 #include <sstream>
@@ -64,9 +65,7 @@ public:
       return list;
     }
 
-    ExprList evaledElements;
-    evalElements(elements, evaledElements);
-    return List{evaledElements};
+    return List{evalElements(elements)};
   }
 
   Expr operator()(const Vector &vector) {
@@ -75,9 +74,7 @@ public:
       return vector;
     }
 
-    ExprVec evaledElements;
-    evalElements(elements, evaledElements);
-    return Vector{evaledElements};
+    return Vector{evalElements(elements)};
   }
 
   Expr operator()(const HashMap &hashmap) {
@@ -87,7 +84,7 @@ public:
 
     ExprMap map;
     for (const auto &[key, value] : hashmap.value) {
-      map[eval(key)] = eval(value);
+      map = std::move(map).set(eval(key), eval(value));
     }
     return HashMap{map};
   }
@@ -96,17 +93,16 @@ public:
 
   Expr eval(const Expr &expr);
 
-  static Expr apply(const Expr &callee, ExprList &args);
+  static Expr apply(const Expr &callee, const ExprList &args);
 
 private:
   EvalResult doEval(const Expr &expr);
 
   template <typename Container>
-  void evalElements(const Container &elements, Container &evaledElements) {
-    const auto &that = this;
-    std::transform(elements.begin(), elements.end(),
-                   std::back_inserter(evaledElements),
-                   [&](const auto &elem) { return that->eval(elem); });
+  Container evalElements(const Container &elements) {
+    return immer::accumulate(
+        elements.begin(), elements.end(), Container{},
+        [&](auto acc, const auto &elem) { return acc.push_back(eval(elem)); });
   }
 
   static std::optional<std::string> firstSymbolOfList(const Expr &expr) {
@@ -151,7 +147,7 @@ private:
 
   Expr evalTryStar(const ExprList &elements);
 
-  static EvalResult applyFunction(const Expr &callee, ExprList &args);
+  static EvalResult applyFunction(const Expr &callee, const ExprList &args);
 
   std::optional<Box<Lambda>> findMacroFunc(const Expr &expr) {
     auto firstSym = firstSymbolOfList(expr);
@@ -183,8 +179,6 @@ private:
     throw WrongTypeError("a symbol", bindingNameExpr);
   }
 
-  using ParamNames = std::vector<std::string>;
-
   static void checkDupParamNames(const ParamNames &paramNames) {
     auto dupParamNames = findDuplicates(paramNames);
     if (!dupParamNames.empty()) {
@@ -207,7 +201,7 @@ private:
 
     for (const auto &[key, count] : counts) {
       if (count > 1) {
-        duplicates.push_back(key);
+        duplicates = std::move(duplicates).push_back(key);
       }
     }
 

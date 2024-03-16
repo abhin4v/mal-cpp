@@ -55,7 +55,7 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
 
   ExprList progArgs{};
   for (auto i = 2; i < args.size(); i++) {
-    progArgs.emplace_back(String{args[i]});
+    progArgs = std::move(progArgs).push_back(String{args[i]});
   }
   replEnv->set("*ARGV*", List{progArgs});
 }

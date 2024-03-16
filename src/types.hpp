@@ -2,6 +2,9 @@
 
 #include "errors.hpp"
 #include <functional>
+#include <immer/flex_vector.hpp>
+#include <immer/map.hpp>
+#include <immer/vector.hpp>
 #include <list>
 #include <memory>
 #include <string>
@@ -83,9 +86,9 @@ using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
 
 using ExprPtr = Box<Expr>;
 
-using ExprVec = std::vector<Expr>;
+using ExprVec = immer::vector<Expr>;
 
-using ExprList = std::list<Expr>;
+using ExprList = immer::flex_vector<Expr>;
 
 struct ExprHash {
   size_t operator()(const Expr &key) const;
@@ -95,24 +98,24 @@ struct ExprEquals {
   bool operator()(const Expr &key1, const Expr &key2) const;
 };
 
-using ExprMap = std::unordered_map<Expr, Expr, ExprHash, ExprEquals>;
+using ExprMap = immer::map<Expr, Expr, ExprHash, ExprEquals>;
 
-using ExprFunction = std::function<Expr(ExprList &)>;
+using ExprFunction = std::function<Expr(const ExprList &)>;
 
-template <typename I, typename O>
-using UnaryFunction = std::function<O(const I &)>;
+template <typename T, typename R>
+using UnaryFunction = std::function<R(const T &)>;
 
 template <typename T> using UnaryExprFunction = UnaryFunction<Expr, T>;
 
-template <typename I, typename O>
-using BinaryFunction = std::function<O(const I &, const I &)>;
+template <typename T, typename R>
+using BinaryFunction = std::function<R(const T &, const T &)>;
 
 template <typename T> using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
 
 template <typename T> using BinaryExprFunction = BinaryFunction<Expr, T>;
 
-template <typename I, typename O>
-using VariadicFunction = std::function<O(const std::vector<I> &)>;
+template <typename T, typename R>
+using VariadicFunction = std::function<R(const immer::vector<T> &)>;
 
 template <typename T>
 using VariadicIntFunction = VariadicFunction<std::int64_t, T>;
@@ -125,8 +128,10 @@ struct BuiltinFunction {
 
 class Env;
 
+using ParamNames = immer::vector<std::string>;
+
 struct Lambda {
-  std::vector<std::string> params;
+  ParamNames params;
   bool variadic;
   bool macro;
   Expr body;
@@ -172,7 +177,6 @@ Expr makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
 Expr makeBuiltinFunction(const std::string &name,
                          VariadicIntFunction<std::int64_t> func);
 
-Expr const *nth(const ExprList &exprs, size_t n);
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);
 std::int64_t intVal(const Expr &expr);
