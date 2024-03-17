@@ -37,8 +37,18 @@ gen-mini-compile-commands:
   just build all
   kill -s SIGINT $pid
 
+@_fixup target:
+  #!/usr/bin/env bash
+  TARGET="{{target}}"
+  if [ "$TARGET" = "all" ]; then
+    just _get-targets "src" "cpp" | xargs -I {} just --quiet _fixup "{}"
+  elif [[ ${TARGET:0:4} == "step" ]]; then
+    install_name_tool -change liblinenoise.so {{LINENOISE_LIB_PATH}}/liblinenoise.so {{BUILD_DIR}}/$TARGET
+  fi
+
 _build target *flags:
   cmake --build {{BUILD_DIR}} --target {{target}} {{flags}} --parallel
+  just --quiet _fixup {{target}}
 
 # builds a target
 build target *flags: (configure "Debug") (_build target flags)
@@ -49,10 +59,9 @@ build-release target *flags: (configure "Release") (_build target flags)
 # cleans the build
 clean:
   cmake --build {{BUILD_DIR}} --target clean
-  rm -f result
 
 _run target *args:
-  DYLD_LIBRARY_PATH={{LINENOISE_LIB_PATH}} {{BUILD_DIR}}/{{target}} {{args}}
+  {{BUILD_DIR}}/{{target}} {{args}}
 
 # runs a target
 run target *args: (build target) (_run target args)
@@ -69,16 +78,16 @@ _test-self-hosted target:
 # test a target on self-hosted interpreter
 test-self-hosted target: (build "stepA_mal") (_test-self-hosted target)
 
-_all-targets dir ext:
+@_get-targets dir ext:
   find {{dir}} -maxdepth 1 -name 'step*.{{ext}}' -type f -print | xargs -I {} basename {} | cut -d '.' -f 1 | sort
 
 # tests all targets
 test-all: (build "all")
-  just _all-targets src cpp | xargs -I {} just _test {}
+  just _get-targets src cpp | xargs -I {} just _test {}
 
 # tests all targets on self-hosted interpreter
 test-self-hosted-all: (build "stepA_mal")
-  just _all-targets ../../impls/mal mal | xargs -I {} just _test-self-hosted {}
+  just _get-targets ../../impls/mal mal | xargs -I {} just _test-self-hosted {}
 
 # tests everything
 test-everything: test-all test-self-hosted-all
