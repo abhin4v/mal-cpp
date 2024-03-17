@@ -4,14 +4,11 @@
 #include <immer/flex_vector.hpp>
 #include <immer/map.hpp>
 #include <immer/vector.hpp>
-#include <list>
 #include <memory>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <variant>
-#include <vector>
 
 #include "errors.hpp"
 

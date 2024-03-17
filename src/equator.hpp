@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <variant>
 
 #include "types.hpp"
@@ -49,6 +48,11 @@ class Equator {
 
   bool operator()(const auto & /*expr1*/, const auto & /*expr2*/) const { return false; }
 
+  static bool exprEquals(const Expr &expr1, const Expr &expr2) {
+    const Equator equator;
+    return std::visit(equator, expr1, expr2);
+  }
+
  private:
   [[nodiscard]] bool equateExpr(const Expr &expr1, const Expr &expr2) const {
     return std::visit(*this, expr1, expr2);
@@ -64,5 +68,3 @@ class Equator {
                       [&](auto expr1, auto expr2) { return equateExpr(expr1, expr2); });
   }
 };
-
-bool exprEquals(const Expr &expr1, const Expr &expr2);

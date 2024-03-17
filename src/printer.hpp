@@ -56,6 +56,10 @@ class Printer {
            ">";
   }
 
+  static std::string prStr(const Expr &expr, bool printReadably) {
+    return std::visit(Printer(printReadably), expr);
+  }
+
  private:
   static std::string escapeCharacters(const std::string &input) {
     std::string output;
@@ -109,5 +113,3 @@ class Printer {
     return list;
   }
 };
-
-std::string prStr(const Expr &expr, bool printReadably);

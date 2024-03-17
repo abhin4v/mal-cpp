@@ -68,8 +68,11 @@ class Hasher {
     return hash;
   }
 
+  static size_t exprHash(const Expr &expr) {
+    Hasher hasher;
+    return std::visit(hasher, expr);
+  }
+
  private:
   [[nodiscard]] size_t hashExpr(const Expr &expr) const { return std::visit(*this, expr); }
 };
-
-size_t exprHash(const Expr &expr);

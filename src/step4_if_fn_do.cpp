@@ -14,7 +14,7 @@ Expr READ(const std::string &input) { return readStr(input); }
 
 Expr EVAL(Evaluator &evaluator, const Expr &ast) { return evaluator.eval(ast); }
 
-std::string PRINT(const Expr &value) { return prStr(value, true); }
+std::string PRINT(const Expr &value) { return Printer::prStr(value, true); }
 
 std::string rep(Evaluator &evaluator, const std::string &input) {
   return PRINT(EVAL(evaluator, READ(input)));
@@ -41,8 +41,8 @@ int main() {
       break;
     }
 
-    linenoiseHistoryAdd(line);          /* Add to the history. */
-    linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
+    linenoiseHistoryAdd(line);
+    linenoiseHistorySave(HISTORY_FILE);
 
     try {
       auto output = rep(evaluator, std::string(line));

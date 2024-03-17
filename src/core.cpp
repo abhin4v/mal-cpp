@@ -2,6 +2,7 @@
 
 #include "constants.hpp"
 #include "env.hpp"
+#include "equator.hpp"
 #include "errors.hpp"
 #include "evaluator.hpp"
 #include "printer.hpp"
@@ -100,7 +101,7 @@ void Core::makeArithmeticFunctions(Builtins &builtins) {
   builtins.emplace(">=", makeBuiltinFunction<bool>(">=", std::greater_equal<std::int64_t>()));
   // NOLINTEND(modernize-use-transparent-functors)
 
-  builtins.emplace("=", makeBuiltinFunction<bool>("=", exprEquals));
+  builtins.emplace("=", makeBuiltinFunction<bool>("=", Equator::exprEquals));
 }
 
 void Core::makeStringFunctions(Builtins &builtins) {
@@ -144,8 +145,7 @@ void Core::makeCollectionFunctions(Builtins &builtins) {
                        return arg;
                      }
                      if (const auto *list = std::get_if<Box<List>>(&arg)) {
-                       Expr vec = Vector{{(*list)->value.begin(), (*list)->value.end()}};
-                       return vec;
+                       return Expr{Vector{{(*list)->value.begin(), (*list)->value.end()}}};
                      }
                      throw WrongTypeError("a list or vector", arg);
                    }));

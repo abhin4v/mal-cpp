@@ -7,10 +7,10 @@
 #include "printer.hpp"
 
 bool ExprEquals::operator()(const Expr &key1, const Expr &key2) const {
-  return exprEquals(key1, key2);
+  return Equator::exprEquals(key1, key2);
 }
 
-size_t ExprHash::operator()(const Expr &key) const { return exprHash(key); }
+size_t ExprHash::operator()(const Expr &key) const { return Hasher::exprHash(key); }
 
 HashMap makeHashMap(const ExprList &elements) {
   auto elementCount = elements.size();
@@ -127,4 +127,4 @@ std::int64_t intVal(const Expr &expr) {
 }
 
 WrongTypeError::WrongTypeError(const std::string &expected, const Expr &actual)
-    : MALError("wrong type: expected " + expected + ", got: " + prStr(actual, true)) {}
+    : MALError("wrong type: expected " + expected + ", got: " + Printer::prStr(actual, true)) {}

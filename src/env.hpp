@@ -48,28 +48,6 @@ class Env {
     }
     throw MALError("'" + name + "' not found");
   }
-
-  //   static void dump(const EnvPtr &env) {
-  //     std::cerr << "----------- Env Dump Start ------------" << std::endl;
-  //     doDump(env);
-  //     std::cerr << "-----------  Env Dump End  ------------" << std::endl;
-  //   }
-
-  // private:
-  //   static void doDump(const EnvPtr &env) {
-  //     for (const auto &[key, value] : env->data) {
-  //       std::cerr << key << " = " << prStr(value, true) << std::endl;
-  //     }
-  //     if (env->data.empty()) {
-  //       std::cerr << "EMPTY" << std::endl;
-  //     }
-
-  //     if (env->outer != nullptr) {
-
-  //       std::cerr << "OUTER" << std::endl;
-  //       doDump(env->outer);
-  //     }
-  //   }
 };
 
 using EnvPtr = std::shared_ptr<Env>;

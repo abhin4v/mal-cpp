@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <exception>
 #include <functional>
 #include <immer/algorithm.hpp>
@@ -11,7 +10,6 @@
 #include <unordered_map>
 #include <utility>
 #include <variant>
-#include <vector>
 
 #include "env.hpp"
 #include "printer.hpp"
@@ -30,7 +28,7 @@ class MALException : public std::exception {
 
  public:
   explicit MALException(Expr value) : value(std::move(value)) {
-    message = std::move(prStr(this->value, true));
+    message = std::move(Printer::prStr(this->value, true));
   }
 
   [[nodiscard]] const char *what() const noexcept override { return message.c_str(); }
@@ -53,32 +51,11 @@ class Evaluator {
   Expr operator()(const BuiltinFunction &func) const { return func; }
   Expr operator()(const Lambda &lambda) const { return lambda; }
   Expr operator()(const Atom &expr) const { return expr; }
-
   Expr operator()(const Symbol &sym) const { return env->get(sym.value).getRaw(); }
-
-  Expr operator()(const List &list) {
-    auto elements = list.value;
-    if (elements.empty()) {
-      return list;
-    }
-
-    return List{evalElements(elements)};
-  }
-
-  Expr operator()(const Vector &vector) {
-    auto elements = vector.value;
-    if (vector.value.empty()) {
-      return vector;
-    }
-
-    return Vector{evalElements(elements)};
-  }
+  Expr operator()(const List &list) { return List{evalElements(list.value)}; }
+  Expr operator()(const Vector &vector) { return Vector{evalElements(vector.value)}; }
 
   Expr operator()(const HashMap &hashmap) {
-    if (hashmap.value.empty()) {
-      return hashmap;
-    }
-
     ExprMap map;
     for (const auto &[key, value] : hashmap.value) {
       map = std::move(map).set(eval(key), eval(value));
@@ -86,10 +63,8 @@ class Evaluator {
     return HashMap{map};
   }
 
-  Expr trampoliningEval(const Expr &expr);
-
   Expr eval(const Expr &expr);
-
+  Expr trampoliningEval(const Expr &expr);
   static Expr apply(const Expr &callee, const ExprList &args);
 
  private:
@@ -116,8 +91,6 @@ class Evaluator {
 
   EvalResult evalSpecialForm(const std::string &specialSymbol, const ExprList &elements);
 
-  Expr macroexpand(const Expr &expr);
-
   Expr evalDefBang(const ExprList &elements);
 
   Expr evalDefmacroBang(const ExprList &elements);
@@ -136,6 +109,8 @@ class Evaluator {
   template <typename Container>
   Expr doEvalFnStar(const Container &params, const Expr &body);
 
+  Expr macroexpand(const Expr &expr);
+
   static Expr quasiquote(const Expr &expr);
 
   static Expr quasiquoteList(const List &list);
@@ -144,35 +119,11 @@ class Evaluator {
 
   static EvalResult applyFunction(const Expr &callee, const ExprList &args);
 
-  std::optional<Box<Lambda>> findMacroFunc(const Expr &expr) {
-    auto firstSym = firstSymbolOfList(expr);
-    if (!firstSym.has_value()) {
-      return std::nullopt;
-    }
-
-    const auto &val = env->find(firstSym.value());
-    if (!val.has_value()) {
-      return std::nullopt;
-    }
-
-    if (const auto *lambda = std::get_if<Box<Lambda>>(&val.value().getRaw())) {
-      return (*lambda)->macro ? std::make_optional(*lambda) : std::nullopt;
-    }
-
-    return std::nullopt;
-  }
+  std::optional<Box<Lambda>> findMacroFunc(const Expr &expr);
 
   static std::pair<std::string, Expr> defineBinding(
       const EnvPtr &env, const Expr &bindingNameExpr,
-      const std::function<Expr()> &makeBindingValueExpr) {
-    if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
-      auto evaluatedBindingValue = makeBindingValueExpr();
-      auto name                  = bindingName->value;
-      env->set(name, evaluatedBindingValue);
-      return {name, evaluatedBindingValue};
-    }
-    throw WrongTypeError("a symbol", bindingNameExpr);
-  }
+      const std::function<Expr()> &makeBindingValueExpr);
 
   static void checkDupParamNames(const ParamNames &paramNames) {
     auto dupParamNames = findDuplicates(paramNames);

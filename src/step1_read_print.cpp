@@ -8,7 +8,7 @@ Expr READ(const std::string &input) { return readStr(input); }
 
 Expr EVAL(const Expr &ast) { return ast; }
 
-std::string PRINT(const Expr &value) { return prStr(value, true); }
+std::string PRINT(const Expr &value) { return Printer::prStr(value, true); }
 
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
 
@@ -25,8 +25,8 @@ int main() {
       break;
     }
 
-    linenoiseHistoryAdd(line);          /* Add to the history. */
-    linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
+    linenoiseHistoryAdd(line);
+    linenoiseHistorySave(HISTORY_FILE);
 
     try {
       auto output = rep(std::string(line));

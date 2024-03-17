@@ -9,6 +9,20 @@
 #include "printer.hpp"
 #include "types.hpp"
 
+Expr Evaluator::eval(const Expr &expr) {
+  auto result = doEval(expr);
+  if (result.evaluated) {
+    return result.result;
+  }
+
+  if (result.env == nullptr) {
+    return eval(result.result);
+  }
+
+  Evaluator evaluator(result.env);
+  return evaluator.eval(result.result);
+}
+
 Expr Evaluator::trampoliningEval(const Expr &expr) {
   auto curExpr = expr;
   while (true) {
@@ -23,20 +37,6 @@ Expr Evaluator::trampoliningEval(const Expr &expr) {
 
     curExpr = result.result;
   }
-}
-
-Expr Evaluator::eval(const Expr &expr) {
-  auto result = doEval(expr);
-  if (result.evaluated) {
-    return result.result;
-  }
-
-  if (result.env == nullptr) {
-    return eval(result.result);
-  }
-
-  Evaluator evaluator(result.env);
-  return evaluator.eval(result.result);
 }
 
 EvalResult Evaluator::doEval(const Expr &expr) {
@@ -101,55 +101,6 @@ EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol, const Ex
   }
 
   throw WrongTypeError("a special symbol", Symbol{specialSymbol});
-}
-
-Expr Evaluator::evalTryStar(const ExprList &elements) {
-  const Expr &expr = elements.at(1);
-  if (elements.size() > 2) {
-    checkArgCount(elements.size() - 1, 2);
-
-    const auto &catchExpr = elements.at(2);
-    auto firstSym         = firstSymbolOfList(catchExpr);
-    if (!firstSym.has_value() || firstSym.value() != CATCH_STAR_FORM_SYM) {
-      throw MALError("try* must contain catch* form, got: " + prStr(catchExpr, true));
-    }
-
-    const auto &catchForm = std::get<Box<List>>(catchExpr)->value;
-    checkArgCount(catchForm.size(), 3);
-
-    const auto &catchVal = catchForm.at(1);
-    if (const auto *catchSym = std::get_if<Symbol>(&catchVal)) {
-      Lambda handler{
-          .params   = {catchSym->value},
-          .variadic = false,
-          .macro    = false,
-          .body     = catchForm.at(2),
-          .env      = env,
-      };
-      try {
-        return eval(expr);
-      } catch (const MALException &e) {
-        return apply(handler, {e.getValue()});
-      } catch (const MALError &e) {
-        return apply(handler, {String{e.what()}});
-      }
-    }
-    throw WrongTypeError("a symbol", catchVal);
-  }
-
-  return eval(expr);
-}
-
-Expr Evaluator::macroexpand(const Expr &expr) {
-  auto curExpr = expr;
-  auto func    = findMacroFunc(curExpr);
-  while (func.has_value()) {
-    auto &list = std::get<Box<List>>(curExpr)->value;
-    curExpr    = apply(func->getRaw(), list.drop(1));
-    func       = findMacroFunc(curExpr);
-  }
-
-  return curExpr;
 }
 
 Expr Evaluator::evalDefBang(const ExprList &elements) {
@@ -236,6 +187,18 @@ EvalResult Evaluator::doEvalLetStar(const Container &bindingList, const Expr &le
   return EvalResult{false, evaluator->env, letBody};
 }
 
+std::pair<std::string, Expr> Evaluator::defineBinding(
+    const EnvPtr &env, const Expr &bindingNameExpr,
+    const std::function<Expr()> &makeBindingValueExpr) {
+  if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
+    auto evaluatedBindingValue = makeBindingValueExpr();
+    auto name                  = bindingName->value;
+    env->set(name, evaluatedBindingValue);
+    return {name, evaluatedBindingValue};
+  }
+  throw WrongTypeError("a symbol", bindingNameExpr);
+}
+
 EvalResult Evaluator::evalDo(const ExprList &elements) {
   const auto elementCount = elements.size();
   if (elementCount == 1) {
@@ -282,6 +245,7 @@ Expr Evaluator::evalFnStar(const ExprList &elements) {
 
   throw WrongTypeError("a list or vector", mParams);
 }
+
 template <typename Container>
 Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
   ParamNames paramNames;
@@ -314,6 +278,72 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
                 .macro    = false,
                 .body     = body,
                 .env      = std::make_shared<Env>(Env(env))};
+}
+
+Expr Evaluator::evalTryStar(const ExprList &elements) {
+  const Expr &expr = elements.at(1);
+  if (elements.size() == 2) {
+    return eval(expr);
+  }
+
+  checkArgCount(elements.size() - 1, 2);
+  const auto &catchExpr = elements.at(2);
+  auto firstSym         = firstSymbolOfList(catchExpr);
+  if (!firstSym.has_value() || firstSym.value() != CATCH_STAR_FORM_SYM) {
+    throw MALError("try* must contain catch* form, got: " + Printer::prStr(catchExpr, true));
+  }
+
+  const auto &catchForm = std::get<Box<List>>(catchExpr)->value;
+  checkArgCount(catchForm.size(), 3);
+
+  const auto &catchVal = catchForm.at(1);
+  if (const auto *catchSym = std::get_if<Symbol>(&catchVal)) {
+    Lambda handler{
+        .params   = {catchSym->value},
+        .variadic = false,
+        .macro    = false,
+        .body     = catchForm.at(2),
+        .env      = env,
+    };
+    try {
+      return eval(expr);
+    } catch (const MALException &e) {
+      return apply(handler, {e.getValue()});
+    } catch (const MALError &e) {
+      return apply(handler, {String{e.what()}});
+    }
+  }
+  throw WrongTypeError("a symbol", catchVal);
+}
+
+Expr Evaluator::macroexpand(const Expr &expr) {
+  auto curExpr = expr;
+  auto func    = findMacroFunc(curExpr);
+  while (func.has_value()) {
+    auto &list = std::get<Box<List>>(curExpr)->value;
+    curExpr    = apply(func->getRaw(), list.drop(1));
+    func       = findMacroFunc(curExpr);
+  }
+
+  return curExpr;
+}
+
+std::optional<Box<Lambda>> Evaluator::findMacroFunc(const Expr &expr) {
+  auto firstSym = firstSymbolOfList(expr);
+  if (!firstSym.has_value()) {
+    return std::nullopt;
+  }
+
+  const auto &val = env->find(firstSym.value());
+  if (!val.has_value()) {
+    return std::nullopt;
+  }
+
+  if (const auto *lambda = std::get_if<Box<Lambda>>(&val.value().getRaw())) {
+    return (*lambda)->macro ? std::make_optional(*lambda) : std::nullopt;
+  }
+
+  return std::nullopt;
 }
 
 Expr Evaluator::quasiquote(const Expr &expr) {

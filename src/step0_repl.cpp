@@ -24,8 +24,8 @@ int main() {
       break;
     }
 
-    linenoiseHistoryAdd(line);          /* Add to the history. */
-    linenoiseHistorySave(HISTORY_FILE); /* Save the history on disk. */
+    linenoiseHistoryAdd(line);
+    linenoiseHistorySave(HISTORY_FILE);
 
     auto output = rep(std::string(line));
     std::cout << output << std::endl;

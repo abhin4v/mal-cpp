@@ -54,8 +54,9 @@ class Core {
       return "";
     }
     std::stringstream buffer;
-    std::for_each(args.begin(), args.end(),
-                  [&](const auto &arg) { buffer << prStr(arg, printReadably) << separator; });
+    std::for_each(args.begin(), args.end(), [&](const auto &arg) {
+      buffer << Printer::prStr(arg, printReadably) << separator;
+    });
     auto str{buffer.str()};
     return str.substr(0, str.size() - separator.size());
   }
