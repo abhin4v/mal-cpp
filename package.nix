@@ -18,7 +18,7 @@ stdenv.mkDerivation {
   buildInputs = [ immer linenoise ];
   checkInputs = [ ];
 
-  fixupPhase = ''
+  fixupPhase = lib.optionalString stdenv.isDarwin ''
     LIBLINENOISE_PATH=`pkg-config --libs-only-L linenoise | cut -c 3-`;
     for prog in $(find $out -name "step*"); do
       echo "Fixing $prog";

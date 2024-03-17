@@ -37,6 +37,7 @@ gen-mini-compile-commands:
   just build all
   kill -s SIGINT $pid
 
+[macos]
 @_fixup target:
   #!/usr/bin/env bash
   TARGET="{{target}}"
@@ -45,6 +46,10 @@ gen-mini-compile-commands:
   elif [[ ${TARGET:0:4} == "step" ]]; then
     install_name_tool -change liblinenoise.so {{LINENOISE_LIB_PATH}}/liblinenoise.so {{BUILD_DIR}}/$TARGET
   fi
+
+[linux]
+@_fixup target:
+  true
 
 _build target *flags:
   cmake --build {{BUILD_DIR}} --target {{target}} {{flags}} --parallel

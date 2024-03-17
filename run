@@ -1,2 +1,2 @@
-#!/bin/bash
+#!/usr/bin/env bash
 just _run ${STEP:-stepA_mal} "${@}"

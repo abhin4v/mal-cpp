@@ -1,10 +1,10 @@
 #include "tokenizer.hpp"
 
-static constexpr std::array<const char *, 16> TOKEN_TYPE_NAMES = {
+static constexpr const char * TOKEN_TYPE_NAMES[16] = {
     "UD", "~", "@", "~@", "[", "]", "(", ")", "{", "}", "'", "`", "^", "COMMENT", "ATOM", "STRING"};
 
 const char *tokenTypeName(TokenType tokenType) {
-  return const_cast<char *>(TOKEN_TYPE_NAMES.at(static_cast<int>(tokenType)));
+  return const_cast<char *>(TOKEN_TYPE_NAMES[static_cast<int>(tokenType)]);
 }
 
 std::vector<Token> Tokenizer::tokenize() {

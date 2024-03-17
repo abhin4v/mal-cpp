@@ -22,7 +22,7 @@ class Printer {
     switch (boolean) {
       case Bool::TRUE:
         return "true";
-      case Bool::FALSE:
+      default:
         return "false";
     }
   }
