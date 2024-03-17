@@ -1,26 +1,26 @@
 #pragma once
 
-#include "errors.hpp"
-#include "tokenizer.hpp"
-#include "types.hpp"
 #include <cctype>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "errors.hpp"
+#include "tokenizer.hpp"
+#include "types.hpp"
+
 class ReaderError : public MALError {
-public:
-  explicit ReaderError(const std::string &message)
-      : MALError("reader error: " + message) {}
+ public:
+  explicit ReaderError(const std::string &message) : MALError("reader error: " + message) {}
 };
 
 class Reader {
-private:
+ private:
   std::vector<Token> tokens;
   int position{0};
 
-public:
+ public:
   explicit Reader(const std::vector<Token> &tokens) : tokens(tokens) {}
 
   bool eof() { return !peek().has_value(); }
@@ -36,7 +36,7 @@ public:
     throw ReaderError("at EOF");
   }
 
-private:
+ private:
   ExprList readList(const Token &startDelimToken, TokenType endDelimTokenType);
 
   Expr readAtom();
@@ -66,8 +66,7 @@ private:
     auto const token = advance();
     if (token != expected) {
       std::stringstream error;
-      error << "expected " << expected.toString() << ", got "
-            << token.toString();
+      error << "expected " << expected.toString() << ", got " << token.toString();
       throw ReaderError(error.str());
     }
   }

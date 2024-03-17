@@ -1,31 +1,21 @@
 #pragma once
 
-#include "types.hpp"
 #include <algorithm>
 #include <variant>
 
+#include "types.hpp"
+
 class Equator {
-public:
-  bool operator()(const Nil & /*nil1*/, const Nil & /*nil2*/) const {
-    return true;
-  }
-  bool operator()(const Int &num1, const Int &num2) const {
-    return num1.value == num2.value;
-  }
-  bool operator()(const Bool &boolean1, const Bool &boolean2) const {
-    return boolean1 == boolean2;
-  }
-  bool operator()(const String &str1, const String &str2) const {
-    return str1.value == str2.value;
-  }
+ public:
+  bool operator()(const Nil & /*nil1*/, const Nil & /*nil2*/) const { return true; }
+  bool operator()(const Int &num1, const Int &num2) const { return num1.value == num2.value; }
+  bool operator()(const Bool &boolean1, const Bool &boolean2) const { return boolean1 == boolean2; }
+  bool operator()(const String &str1, const String &str2) const { return str1.value == str2.value; }
   bool operator()(const Keyword &kwd1, const Keyword &kwd2) const {
     return kwd1.value == kwd2.value;
   }
-  bool operator()(const Symbol &sym1, const Symbol &sym2) const {
-    return sym1.value == sym2.value;
-  }
-  bool operator()(const Box<BuiltinFunction> &func1,
-                  const Box<BuiltinFunction> &func2) const {
+  bool operator()(const Symbol &sym1, const Symbol &sym2) const { return sym1.value == sym2.value; }
+  bool operator()(const Box<BuiltinFunction> &func1, const Box<BuiltinFunction> &func2) const {
     return func1->name == func2->name && func1->arity == func2->arity;
   }
   bool operator()(const Box<List> &list1, const Box<List> &list2) const {
@@ -34,8 +24,7 @@ public:
   bool operator()(const Box<List> &list, const Box<Vector> &vector) const {
     return equateElements(list->value, vector->value);
   }
-  bool operator()(const Box<Vector> &vector1,
-                  const Box<Vector> &vector2) const {
+  bool operator()(const Box<Vector> &vector1, const Box<Vector> &vector2) const {
     return equateElements(vector1->value, vector2->value);
   }
   bool operator()(const Box<Vector> &vector, const Box<List> &list) const {
@@ -58,11 +47,9 @@ public:
     return true;
   }
 
-  bool operator()(const auto & /*expr1*/, const auto & /*expr2*/) const {
-    return false;
-  }
+  bool operator()(const auto & /*expr1*/, const auto & /*expr2*/) const { return false; }
 
-private:
+ private:
   [[nodiscard]] bool equateExpr(const Expr &expr1, const Expr &expr2) const {
     return std::visit(*this, expr1, expr2);
   }
@@ -73,9 +60,8 @@ private:
     if (elements.size() != otherElements.size()) {
       return false;
     }
-    return std::equal(
-        elements.begin(), elements.end(), otherElements.begin(),
-        [&](auto expr1, auto expr2) { return equateExpr(expr1, expr2); });
+    return std::equal(elements.begin(), elements.end(), otherElements.begin(),
+                      [&](auto expr1, auto expr2) { return equateExpr(expr1, expr2); });
   }
 };
 

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "constants.hpp"
-#include "printer.hpp"
-#include "types.hpp"
 #include <immer/flex_vector.hpp>
 #include <memory>
 #include <optional>
@@ -11,20 +8,23 @@
 #include <utility>
 #include <variant>
 
+#include "constants.hpp"
+#include "printer.hpp"
+#include "types.hpp"
+
 class Env {
-private:
+ private:
   using EnvPtr = std::shared_ptr<Env>;
   EnvPtr outer;
   std::unordered_map<std::string, ExprPtr> data;
 
-public:
+ public:
   explicit Env(EnvPtr outer) : outer(std::move(outer)) {}
 
   void set(const std::string &name, const Expr &expr) {
     if (const auto *list = std::get_if<Box<List>>(&expr)) {
-      data.insert_or_assign(
-          name,
-          Box{Expr{List{(*list)->value.push_front(this->get(LIST_FN_SYM))}}});
+      data.insert_or_assign(name,
+                            Box{Expr{List{(*list)->value.push_front(this->get(LIST_FN_SYM))}}});
       return;
     }
     data.insert_or_assign(name, Box(expr));

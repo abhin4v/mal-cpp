@@ -1,4 +1,5 @@
 #include "reader.hpp"
+
 #include "constants.hpp"
 #include "errors.hpp"
 #include "tokenizer.hpp"
@@ -6,13 +7,11 @@
 
 namespace {
 void removeComments(std::vector<Token> &tokens) {
-
-  auto newEnd = std::remove_if(tokens.begin(), tokens.end(), [](auto token) {
-    return token.type == TokenType::COMMENT;
-  });
+  auto newEnd = std::remove_if(tokens.begin(), tokens.end(),
+                               [](auto token) { return token.type == TokenType::COMMENT; });
   tokens.erase(newEnd, tokens.end());
 }
-} // namespace
+}  // namespace
 
 Expr readStr(const std::string &input) {
   auto tokens = tokenize(input);
@@ -35,65 +34,64 @@ Expr Reader::readForm() {
   if (oToken.has_value()) {
     auto token = oToken.value();
     switch (token.type) {
-    case TokenType::LEFT_PAREN:
-      return List{readList(token, TokenType::RIGHT_PAREN)};
+      case TokenType::LEFT_PAREN:
+        return List{readList(token, TokenType::RIGHT_PAREN)};
 
-    case TokenType::LEFT_BRACKET: {
-      const auto list = readList(token, TokenType::RIGHT_BRACKET);
-      return Vector{{list.begin(), list.end()}};
-    }
-
-    case TokenType::LEFT_BRACE: {
-      const auto list = readList(token, TokenType::RIGHT_BRACE);
-      try {
-        return makeHashMap(list);
-      } catch (const MALError &err) {
-        throw ReaderError(err.what());
+      case TokenType::LEFT_BRACKET: {
+        const auto list = readList(token, TokenType::RIGHT_BRACKET);
+        return Vector{{list.begin(), list.end()}};
       }
-    }
 
-    case TokenType::QUOTE: {
-      advance();
-      return List{{Symbol{QUOTE_FORM_SYM}, readForm()}};
-    }
+      case TokenType::LEFT_BRACE: {
+        const auto list = readList(token, TokenType::RIGHT_BRACE);
+        try {
+          return makeHashMap(list);
+        } catch (const MALError &err) {
+          throw ReaderError(err.what());
+        }
+      }
 
-    case TokenType::BACKQUOTE: {
-      advance();
-      return List{{Symbol{QUASIQUOTE_FORM_SYM}, readForm()}};
-    }
+      case TokenType::QUOTE: {
+        advance();
+        return List{{Symbol{QUOTE_FORM_SYM}, readForm()}};
+      }
 
-    case TokenType::TILDE: {
-      advance();
-      return List{{Symbol{UNQUOTE_FORM_SYM}, readForm()}};
-    }
+      case TokenType::BACKQUOTE: {
+        advance();
+        return List{{Symbol{QUASIQUOTE_FORM_SYM}, readForm()}};
+      }
 
-    case TokenType::TILDE_AT: {
-      advance();
-      return List{{Symbol{SPLICE_UNQUOTE_FORM_SYM}, readForm()}};
-    }
+      case TokenType::TILDE: {
+        advance();
+        return List{{Symbol{UNQUOTE_FORM_SYM}, readForm()}};
+      }
 
-    case TokenType::AT: {
-      advance();
-      return List{{Symbol{DEREF_FN_SYM}, readForm()}};
-    }
+      case TokenType::TILDE_AT: {
+        advance();
+        return List{{Symbol{SPLICE_UNQUOTE_FORM_SYM}, readForm()}};
+      }
 
-    case TokenType::CARET: {
-      advance();
-      auto meta = readForm();
-      auto data = readForm();
-      return List{{Symbol{WITH_META_FN_SYM}, std::move(data), std::move(meta)}};
-    }
+      case TokenType::AT: {
+        advance();
+        return List{{Symbol{DEREF_FN_SYM}, readForm()}};
+      }
 
-    default:
-      return readAtom();
+      case TokenType::CARET: {
+        advance();
+        auto meta = readForm();
+        auto data = readForm();
+        return List{{Symbol{WITH_META_FN_SYM}, std::move(data), std::move(meta)}};
+      }
+
+      default:
+        return readAtom();
     }
   }
 
   throw ReaderError("no tokens");
 }
 
-ExprList Reader::readList(const Token &startDelimToken,
-                          TokenType endDelimTokenType) {
+ExprList Reader::readList(const Token &startDelimToken, TokenType endDelimTokenType) {
   expect(startDelimToken);
   ExprList elements;
 
@@ -114,43 +112,43 @@ ExprList Reader::readList(const Token &startDelimToken,
   }
 }
 
-static const auto NIL_LEXEME = "nil";
-static const auto TRUE_LEXEME = "true";
-static const auto FALSE_LEXEME = "false";
+static const auto NIL_LEXEME    = "nil";
+static const auto TRUE_LEXEME   = "true";
+static const auto FALSE_LEXEME  = "false";
 static const auto KEYWORD_SIGIL = ':';
 
 Expr Reader::readAtom() {
-  auto token = advance();
+  auto token  = advance();
   auto lexeme = token.lexeme;
   switch (token.type) {
-  case TokenType::STRING:
-    return String{token.lexeme};
-  case TokenType::ATOM: {
-    auto chr = lexeme[0];
-    if (std::isdigit(chr) != 0) {
-      return Int{parseUnsignedInteger(lexeme)};
+    case TokenType::STRING:
+      return String{token.lexeme};
+    case TokenType::ATOM: {
+      auto chr = lexeme[0];
+      if (std::isdigit(chr) != 0) {
+        return Int{parseUnsignedInteger(lexeme)};
+      }
+      if (chr == '-' && lexeme.size() >= 2 && std::isdigit(lexeme[1]) != 0) {
+        auto num = parseUnsignedInteger(lexeme.substr(1));
+        return Int{-num};
+      }
+      if (lexeme == NIL_LEXEME) {
+        return Nil::NIL;
+      }
+      if (lexeme == TRUE_LEXEME) {
+        return Bool::TRUE;
+      }
+      if (lexeme == FALSE_LEXEME) {
+        return Bool::FALSE;
+      }
+      if (chr == KEYWORD_SIGIL) {
+        return Keyword{lexeme.substr(1)};
+      }
+      return Symbol{lexeme};
     }
-    if (chr == '-' && lexeme.size() >= 2 && std::isdigit(lexeme[1]) != 0) {
-      auto num = parseUnsignedInteger(lexeme.substr(1));
-      return Int{-num};
-    }
-    if (lexeme == NIL_LEXEME) {
-      return Nil::NIL;
-    }
-    if (lexeme == TRUE_LEXEME) {
-      return Bool::TRUE;
-    }
-    if (lexeme == FALSE_LEXEME) {
-      return Bool::FALSE;
-    }
-    if (chr == KEYWORD_SIGIL) {
-      return Keyword{lexeme.substr(1)};
-    }
-    return Symbol{lexeme};
-  }
-  default:
-    std::stringstream error;
-    error << "invalid token type: " << tokenTypeName(token.type);
-    throw ReaderError(error.str());
+    default:
+      std::stringstream error;
+      error << "invalid token type: " << tokenTypeName(token.type);
+      throw ReaderError(error.str());
   }
 }

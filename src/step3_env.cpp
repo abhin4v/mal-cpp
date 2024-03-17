@@ -1,3 +1,7 @@
+#include <iostream>
+#include <memory>
+#include <string>
+
 #include "core.hpp"
 #include "env.hpp"
 #include "evaluator.hpp"
@@ -5,9 +9,6 @@
 #include "printer.hpp"
 #include "reader.hpp"
 #include "types.hpp"
-#include <iostream>
-#include <memory>
-#include <string>
 
 Expr READ(const std::string &input) { return readStr(input); }
 
@@ -19,7 +20,7 @@ std::string rep(Evaluator &evaluator, const std::string &input) {
   return PRINT(EVAL(evaluator, READ(input)));
 }
 
-static const auto HISTORY_FILE = ".repl_history";
+static const auto HISTORY_FILE    = ".repl_history";
 static const auto HISTORY_MAX_LEN = 1000;
 
 int main() {

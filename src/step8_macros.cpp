@@ -1,3 +1,8 @@
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "constants.hpp"
 #include "core.hpp"
 #include "env.hpp"
@@ -6,10 +11,6 @@
 #include "printer.hpp"
 #include "reader.hpp"
 #include "types.hpp"
-#include <iostream>
-#include <memory>
-#include <string>
-#include <vector>
 
 Expr READ(const std::string &input) { return readStr(input); }
 
@@ -29,23 +30,19 @@ std::string trampoliningREP(Evaluator &evaluator, const std::string &input) {
   return PRINT(trampoliningEVAL(evaluator, READ(input)));
 }
 
-void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
-               const std::vector<std::string> &args) {
+void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator, const std::vector<std::string> &args) {
   for (const auto &[name, func] : Core::ns()) {
     replEnv->set(name, func);
   }
 
-  replEnv->set("eval", makeBuiltinFunction<Expr>("eval", [&](const Expr &ast) {
-                 return EVAL(evaluator, ast);
+  replEnv->set("eval", makeBuiltinFunction<Expr>(
+                           "eval", [&](const Expr &ast) { return EVAL(evaluator, ast); }));
+  replEnv->set("trampolining-eval",
+               makeBuiltinFunction<Expr>("trampolining-eval", [&](const Expr &ast) {
+                 return trampoliningEVAL(evaluator, ast);
                }));
-  replEnv->set(
-      "trampolining-eval",
-      makeBuiltinFunction<Expr>("trampolining-eval", [&](const Expr &ast) {
-        return trampoliningEVAL(evaluator, ast);
-      }));
   replEnv->set(SWAP_BANG_FN_SYM,
-               Core::makeSwapBangFunction(
-                   [&](const Expr &ast) { return EVAL(evaluator, ast); }));
+               Core::makeSwapBangFunction([&](const Expr &ast) { return EVAL(evaluator, ast); }));
 
   rep(evaluator, Core::NOT_FUNC);
   rep(evaluator, Core::LOAD_FILE_FUNC);
@@ -58,7 +55,7 @@ void setupREPL(const EnvPtr &replEnv, Evaluator &evaluator,
   replEnv->set("*ARGV*", List{progArgs});
 }
 
-static const auto HISTORY_FILE = ".repl_history";
+static const auto HISTORY_FILE    = ".repl_history";
 static const auto HISTORY_MAX_LEN = 1000;
 
 void runREPL(Evaluator &evaluator) {

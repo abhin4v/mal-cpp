@@ -1,11 +1,5 @@
 #pragma once
 
-#include "constants.hpp"
-#include "env.hpp"
-#include "equator.hpp"
-#include "printer.hpp"
-#include "reader.hpp"
-#include "types.hpp"
 #include <algorithm>
 #include <fstream>
 #include <functional>
@@ -16,10 +10,17 @@
 #include <unordered_map>
 #include <variant>
 
+#include "constants.hpp"
+#include "env.hpp"
+#include "equator.hpp"
+#include "printer.hpp"
+#include "reader.hpp"
+#include "types.hpp"
+
 using Builtins = std::unordered_map<std::string, Expr>;
 
 class Core {
-private:
+ private:
   static Builtins makeBuiltins() noexcept;
 
   static void makeArithmeticFunctions(Builtins &builtins);
@@ -53,9 +54,8 @@ private:
       return "";
     }
     std::stringstream buffer;
-    std::for_each(args.begin(), args.end(), [&](const auto &arg) {
-      buffer << prStr(arg, printReadably) << separator;
-    });
+    std::for_each(args.begin(), args.end(),
+                  [&](const auto &arg) { buffer << prStr(arg, printReadably) << separator; });
     auto str{buffer.str()};
     return str.substr(0, str.size() - separator.size());
   }
@@ -69,7 +69,7 @@ private:
 
   const inline static Builtins builtins = makeBuiltins();
 
-public:
+ public:
   static Builtins ns() { return builtins; }
 
   static Expr makeWithMetaFunction(const EnvPtr &env);

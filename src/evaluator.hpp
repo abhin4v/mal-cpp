@@ -1,8 +1,5 @@
 #pragma once
 
-#include "env.hpp"
-#include "printer.hpp"
-#include "types.hpp"
 #include <algorithm>
 #include <exception>
 #include <functional>
@@ -16,6 +13,10 @@
 #include <variant>
 #include <vector>
 
+#include "env.hpp"
+#include "printer.hpp"
+#include "types.hpp"
+
 struct EvalResult {
   bool evaluated;
   EnvPtr env;
@@ -23,27 +24,25 @@ struct EvalResult {
 };
 
 class MALException : public std::exception {
-private:
+ private:
   Expr value;
   std::string message;
 
-public:
+ public:
   explicit MALException(Expr value) : value(std::move(value)) {
     message = std::move(prStr(this->value, true));
   }
 
-  [[nodiscard]] const char *what() const noexcept override {
-    return message.c_str();
-  }
+  [[nodiscard]] const char *what() const noexcept override { return message.c_str(); }
 
   [[nodiscard]] Expr getValue() const { return value; }
 };
 
 class Evaluator {
-private:
+ private:
   EnvPtr env;
 
-public:
+ public:
   explicit Evaluator(EnvPtr env) : env(std::move(env)) {}
 
   Expr operator()(const Nil &nil) const { return nil; }
@@ -55,9 +54,7 @@ public:
   Expr operator()(const Lambda &lambda) const { return lambda; }
   Expr operator()(const Atom &expr) const { return expr; }
 
-  Expr operator()(const Symbol &sym) const {
-    return env->get(sym.value).getRaw();
-  }
+  Expr operator()(const Symbol &sym) const { return env->get(sym.value).getRaw(); }
 
   Expr operator()(const List &list) {
     auto elements = list.value;
@@ -95,14 +92,13 @@ public:
 
   static Expr apply(const Expr &callee, const ExprList &args);
 
-private:
+ private:
   EvalResult doEval(const Expr &expr);
 
   template <typename Container>
   Container evalElements(const Container &elements) {
-    return immer::accumulate(
-        elements.begin(), elements.end(), Container{},
-        [&](auto acc, const auto &elem) { return acc.push_back(eval(elem)); });
+    return immer::accumulate(elements.begin(), elements.end(), Container{},
+                             [&](auto acc, const auto &elem) { return acc.push_back(eval(elem)); });
   }
 
   static std::optional<std::string> firstSymbolOfList(const Expr &expr) {
@@ -118,8 +114,7 @@ private:
     return std::nullopt;
   }
 
-  EvalResult evalSpecialForm(const std::string &specialSymbol,
-                             const ExprList &elements);
+  EvalResult evalSpecialForm(const std::string &specialSymbol, const ExprList &elements);
 
   Expr macroexpand(const Expr &expr);
 
@@ -167,12 +162,12 @@ private:
     return std::nullopt;
   }
 
-  static std::pair<std::string, Expr>
-  defineBinding(const EnvPtr &env, const Expr &bindingNameExpr,
-                const std::function<Expr()> &makeBindingValueExpr) {
+  static std::pair<std::string, Expr> defineBinding(
+      const EnvPtr &env, const Expr &bindingNameExpr,
+      const std::function<Expr()> &makeBindingValueExpr) {
     if (const auto *bindingName = std::get_if<Symbol>(&bindingNameExpr)) {
       auto evaluatedBindingValue = makeBindingValueExpr();
-      auto name = bindingName->value;
+      auto name                  = bindingName->value;
       env->set(name, evaluatedBindingValue);
       return {name, evaluatedBindingValue};
     }

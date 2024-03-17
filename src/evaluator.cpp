@@ -1,11 +1,13 @@
 #include "evaluator.hpp"
+
+#include <iterator>
+#include <unordered_set>
+#include <variant>
+
 #include "constants.hpp"
 #include "errors.hpp"
 #include "printer.hpp"
 #include "types.hpp"
-#include <iterator>
-#include <unordered_set>
-#include <variant>
 
 Expr Evaluator::trampoliningEval(const Expr &expr) {
   auto curExpr = expr;
@@ -39,17 +41,14 @@ Expr Evaluator::eval(const Expr &expr) {
 
 EvalResult Evaluator::doEval(const Expr &expr) {
   static const std::unordered_set<std::string> SPECIAL_FORM_SYMBOLS = {
-      DEF_FORM_SYM,        DEFMACRO_FORM_SYM,
-      LET_STAR_FORM_SYM,   DO_FORM_SYM,
-      IF_FORM_SYM,         FN_STAR_FORM_SYM,
-      QUOTE_FORM_SYM,      QUASIQUOTEEXPAND_FORM_SYM,
-      QUASIQUOTE_FORM_SYM, MACROEXPAND_FORM_SYM,
-      TRY_STAR_FORM_SYM,
+      DEF_FORM_SYM,        DEFMACRO_FORM_SYM,    LET_STAR_FORM_SYM, DO_FORM_SYM,
+      IF_FORM_SYM,         FN_STAR_FORM_SYM,     QUOTE_FORM_SYM,    QUASIQUOTEEXPAND_FORM_SYM,
+      QUASIQUOTE_FORM_SYM, MACROEXPAND_FORM_SYM, TRY_STAR_FORM_SYM,
   };
 
   const auto expandedExpr = macroexpand(expr);
 
-  auto firstSym = firstSymbolOfList(expandedExpr);
+  auto firstSym           = firstSymbolOfList(expandedExpr);
   if (firstSym.has_value() && SPECIAL_FORM_SYMBOLS.contains(*firstSym)) {
     return evalSpecialForm(*firstSym, std::get<Box<List>>(expandedExpr)->value);
   }
@@ -64,8 +63,7 @@ EvalResult Evaluator::doEval(const Expr &expr) {
   return EvalResult{true, nullptr, evaluatedExpr};
 }
 
-EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol,
-                                      const ExprList &elements) {
+EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol, const ExprList &elements) {
   if (specialSymbol == DEF_FORM_SYM) {
     return EvalResult{true, nullptr, evalDefBang(elements)};
   }
@@ -111,10 +109,9 @@ Expr Evaluator::evalTryStar(const ExprList &elements) {
     checkArgCount(elements.size() - 1, 2);
 
     const auto &catchExpr = elements.at(2);
-    auto firstSym = firstSymbolOfList(catchExpr);
+    auto firstSym         = firstSymbolOfList(catchExpr);
     if (!firstSym.has_value() || firstSym.value() != CATCH_STAR_FORM_SYM) {
-      throw MALError("try* must contain catch* form, got: " +
-                     prStr(catchExpr, true));
+      throw MALError("try* must contain catch* form, got: " + prStr(catchExpr, true));
     }
 
     const auto &catchForm = std::get<Box<List>>(catchExpr)->value;
@@ -123,11 +120,11 @@ Expr Evaluator::evalTryStar(const ExprList &elements) {
     const auto &catchVal = catchForm.at(1);
     if (const auto *catchSym = std::get_if<Symbol>(&catchVal)) {
       Lambda handler{
-          .params = {catchSym->value},
+          .params   = {catchSym->value},
           .variadic = false,
-          .macro = false,
-          .body = catchForm.at(2),
-          .env = env,
+          .macro    = false,
+          .body     = catchForm.at(2),
+          .env      = env,
       };
       try {
         return eval(expr);
@@ -145,11 +142,11 @@ Expr Evaluator::evalTryStar(const ExprList &elements) {
 
 Expr Evaluator::macroexpand(const Expr &expr) {
   auto curExpr = expr;
-  auto func = findMacroFunc(curExpr);
+  auto func    = findMacroFunc(curExpr);
   while (func.has_value()) {
     auto &list = std::get<Box<List>>(curExpr)->value;
-    curExpr = apply(func->getRaw(), list.drop(1));
-    func = findMacroFunc(curExpr);
+    curExpr    = apply(func->getRaw(), list.drop(1));
+    func       = findMacroFunc(curExpr);
   }
 
   return curExpr;
@@ -157,8 +154,8 @@ Expr Evaluator::macroexpand(const Expr &expr) {
 
 Expr Evaluator::evalDefBang(const ExprList &elements) {
   checkArgCount(elements.size() - 1, 2);
-  return std::get<1>(defineBinding(
-      env, elements.at(1), [&]() { return this->eval(elements.back()); }));
+  return std::get<1>(
+      defineBinding(env, elements.at(1), [&]() { return this->eval(elements.back()); }));
 }
 
 Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
@@ -174,7 +171,7 @@ Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
         (*lambda)->macro = true;
         return bindingValue;
       }
-      auto lambdaCopy = lambda->getRaw();
+      auto lambdaCopy  = lambda->getRaw();
       lambdaCopy.macro = true;
       return Expr{lambdaCopy};
     }
@@ -197,8 +194,7 @@ EvalResult Evaluator::evalLetStar(const ExprList &elements) {
 }
 
 template <typename Container>
-EvalResult Evaluator::doEvalLetStar(const Container &bindingList,
-                                    const Expr &letBody) {
+EvalResult Evaluator::doEvalLetStar(const Container &bindingList, const Expr &letBody) {
   if (bindingList.empty()) {
     return EvalResult{false, env, letBody};
   }
@@ -219,13 +215,13 @@ EvalResult Evaluator::doEvalLetStar(const Container &bindingList,
   for (auto iter = bindingList.begin(); iter != bindingList.end(); ++iter) {
     const auto bindingName = *iter;
     std::advance(iter, 1);
-    auto nameValue = defineBinding(letEnvPtr, bindingName,
-                                   [&]() { return evaluator->eval(*iter); });
+    auto nameValue =
+        defineBinding(letEnvPtr, bindingName, [&]() { return evaluator->eval(*iter); });
     bindings[nameValue.first] = nameValue.second;
-    evaluator = &letEvaluator;
-    letEnv = Env(letEnvPtr);
-    letEnvPtr = std::make_shared<Env>(letEnv);
-    letEvaluator = Evaluator(letEnvPtr);
+    evaluator                 = &letEvaluator;
+    letEnv                    = Env(letEnvPtr);
+    letEnvPtr                 = std::make_shared<Env>(letEnv);
+    letEvaluator              = Evaluator(letEnvPtr);
   }
 
   for (const auto &[name, value] : bindings) {
@@ -264,13 +260,11 @@ EvalResult Evaluator::evalIf(const ExprList &elements) {
   auto evaluatedCond = eval(elements.at(1));
   if (const auto *cond = std::get_if<Bool>(&evaluatedCond)) {
     if (*cond == Bool::FALSE) {
-      return EvalResult{argCount == 2, nullptr,
-                        argCount == 3 ? elements.back() : Nil::NIL};
+      return EvalResult{argCount == 2, nullptr, argCount == 3 ? elements.back() : Nil::NIL};
     }
   }
   if (std::holds_alternative<Nil>(evaluatedCond)) {
-    return EvalResult{argCount == 2, nullptr,
-                      argCount == 3 ? elements.back() : Nil::NIL};
+    return EvalResult{argCount == 2, nullptr, argCount == 3 ? elements.back() : Nil::NIL};
   }
   return EvalResult{false, nullptr, elements.at(2)};
 }
@@ -315,11 +309,11 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
   }
 
   checkDupParamNames(paramNames);
-  return Lambda{.params = std::move(paramNames),
+  return Lambda{.params   = std::move(paramNames),
                 .variadic = variadic,
-                .macro = false,
-                .body = body,
-                .env = std::make_shared<Env>(Env(env))};
+                .macro    = false,
+                .body     = body,
+                .env      = std::make_shared<Env>(Env(env))};
 }
 
 Expr Evaluator::quasiquote(const Expr &expr) {
@@ -332,16 +326,14 @@ Expr Evaluator::quasiquote(const Expr &expr) {
     if (const auto *sym = std::get_if<Symbol>(&(elements.front()))) {
       if (sym->value == UNQUOTE_FORM_SYM) {
         elements = std::move(elements).set(
-            0,
-            List{{Symbol{UNQUOTE_FORM_SYM},
-                  List{{Symbol{QUOTE_FORM_SYM}, Symbol{UNQUOTE_FORM_SYM}}}}});
+            0, List{{Symbol{UNQUOTE_FORM_SYM},
+                     List{{Symbol{QUOTE_FORM_SYM}, Symbol{UNQUOTE_FORM_SYM}}}}});
       }
     }
     return List{{Symbol{VEC_FN_SYM}, quasiquote(std::move(List{elements}))}};
   }
 
-  if (std::holds_alternative<Box<HashMap>>(expr) ||
-      std::holds_alternative<Symbol>(expr)) {
+  if (std::holds_alternative<Box<HashMap>>(expr) || std::holds_alternative<Symbol>(expr)) {
     return List{{{Symbol{QUOTE_FORM_SYM}, expr}}};
   }
 
@@ -406,7 +398,7 @@ EvalResult Evaluator::applyFunction(const Expr &callee, const ExprList &args) {
 
   if (const auto *lambdaPtr = std::get_if<Box<Lambda>>(&callee)) {
     const auto &lambda = *lambdaPtr;
-    auto paramCount = lambda->params.size();
+    auto paramCount    = lambda->params.size();
 
     if (lambda->variadic) {
       checkMinArgCount(argCount, paramCount - 1);

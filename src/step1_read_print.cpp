@@ -1,7 +1,8 @@
+#include <iostream>
+
 #include "linenoise.h"
 #include "printer.hpp"
 #include "reader.hpp"
-#include <iostream>
 
 Expr READ(const std::string &input) { return readStr(input); }
 
@@ -11,7 +12,7 @@ std::string PRINT(const Expr &value) { return prStr(value, true); }
 
 std::string rep(const std::string &input) { return PRINT(EVAL(READ(input))); }
 
-static const auto HISTORY_FILE = ".repl_history";
+static const auto HISTORY_FILE    = ".repl_history";
 static const auto HISTORY_MAX_LEN = 1000;
 
 int main() {

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "errors.hpp"
 #include <functional>
 #include <immer/flex_vector.hpp>
 #include <immer/map.hpp>
@@ -14,11 +13,14 @@
 #include <variant>
 #include <vector>
 
-template <typename T> class Box {
-public:
+#include "errors.hpp"
+
+template <typename T>
+class Box {
+ public:
   Box() = delete;
   // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  Box(T value) // cppcheck-suppress noExplicitConstructor
+  Box(T value)  // cppcheck-suppress noExplicitConstructor
       : ptr(std::make_shared<T>(std::move(value))) {}
 
   template <class U>
@@ -26,7 +28,7 @@ public:
   template <typename U, enabler<U>>
   // NOLINTBEGIN(google-explicit-constructor, hicpp-explicit-conversions,
   // bugprone-forwarding-reference-overload)
-  Box(U &&value) // cppcheck-suppress noExplicitConstructor
+  Box(U &&value)  // cppcheck-suppress noExplicitConstructor
       : ptr(std::make_shared<U>(std::forward<U>(value))) {}
   // NOLINTEND(google-explicit-constructor, hicpp-explicit-conversions,
   // bugprone-forwarding-reference-overload)
@@ -39,7 +41,7 @@ public:
   T *operator->() const { return &*ptr; }
   [[nodiscard]] T &getRaw() const { return *ptr; }
 
-private:
+ private:
   std::shared_ptr<T> ptr;
 };
 
@@ -80,13 +82,12 @@ struct MetaData;
 
 struct Atom;
 
-using Expr = std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>,
-                          Box<Vector>, Box<HashMap>, Box<BuiltinFunction>,
-                          Box<Lambda>, Box<Atom>>;
+using Expr     = std::variant<Nil, Int, Bool, String, Symbol, Keyword, Box<List>, Box<Vector>,
+                          Box<HashMap>, Box<BuiltinFunction>, Box<Lambda>, Box<Atom>>;
 
-using ExprPtr = Box<Expr>;
+using ExprPtr  = Box<Expr>;
 
-using ExprVec = immer::vector<Expr>;
+using ExprVec  = immer::vector<Expr>;
 
 using ExprList = immer::flex_vector<Expr>;
 
@@ -98,21 +99,24 @@ struct ExprEquals {
   bool operator()(const Expr &key1, const Expr &key2) const;
 };
 
-using ExprMap = immer::map<Expr, Expr, ExprHash, ExprEquals>;
+using ExprMap      = immer::map<Expr, Expr, ExprHash, ExprEquals>;
 
 using ExprFunction = std::function<Expr(const ExprList &)>;
 
 template <typename T, typename R>
 using UnaryFunction = std::function<R(const T &)>;
 
-template <typename T> using UnaryExprFunction = UnaryFunction<Expr, T>;
+template <typename T>
+using UnaryExprFunction = UnaryFunction<Expr, T>;
 
 template <typename T, typename R>
 using BinaryFunction = std::function<R(const T &, const T &)>;
 
-template <typename T> using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
+template <typename T>
+using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
 
-template <typename T> using BinaryExprFunction = BinaryFunction<Expr, T>;
+template <typename T>
+using BinaryExprFunction = BinaryFunction<Expr, T>;
 
 template <typename T, typename R>
 using VariadicFunction = std::function<R(const immer::vector<T> &)>;
@@ -174,20 +178,19 @@ Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction<T> func);
 template <typename T>
 Expr makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
 
-Expr makeBuiltinFunction(const std::string &name,
-                         VariadicIntFunction<std::int64_t> func);
+Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction<std::int64_t> func);
 
 void checkArgCount(size_t argCount, size_t expected);
 void checkMinArgCount(size_t argCount, size_t expected);
 std::int64_t intVal(const Expr &expr);
 
 class WrongTypeError : public MALError {
-public:
+ public:
   explicit WrongTypeError(const std::string &expected, const Expr &actual);
 };
 
 class WrongArgCountError : public MALError {
-public:
+ public:
   explicit WrongArgCountError(const std::string &expected, size_t &actual)
       : MALError("wrong argument count: expected " + expected +
                  " arguments, got: " + std::to_string(actual)) {}

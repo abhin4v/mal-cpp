@@ -1,8 +1,10 @@
 #include "types.hpp"
+
+#include <immer/algorithm.hpp>
+
 #include "equator.hpp"
 #include "hasher.hpp"
 #include "printer.hpp"
-#include <immer/algorithm.hpp>
 
 bool ExprEquals::operator()(const Expr &key1, const Expr &key2) const {
   return exprEquals(key1, key2);
@@ -22,7 +24,7 @@ HashMap makeHashMap(const ExprList &elements) {
     const auto &key = *iter;
     std::advance(iter, 1);
     const auto &val = *iter;
-    map = std::move(map).set(key, val);
+    map             = std::move(map).set(key, val);
   }
 
   return HashMap{map};
@@ -33,23 +35,19 @@ Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func) {
 }
 
 template <>
-Expr makeBuiltinFunction<bool>(const std::string &name,
-                               UnaryExprFunction<bool> func) {
-  return makeBuiltinFunction(
-      name, 1, [func = std::move(func)](const ExprList &args) {
-        checkArgCount(args.size(), 1);
-        return func(args.front()) ? Bool::TRUE : Bool::FALSE;
-      });
+Expr makeBuiltinFunction<bool>(const std::string &name, UnaryExprFunction<bool> func) {
+  return makeBuiltinFunction(name, 1, [func = std::move(func)](const ExprList &args) {
+    checkArgCount(args.size(), 1);
+    return func(args.front()) ? Bool::TRUE : Bool::FALSE;
+  });
 }
 
 template <>
-Expr makeBuiltinFunction<Expr>(const std::string &name,
-                               UnaryExprFunction<Expr> func) {
-  return makeBuiltinFunction(name, 1,
-                             [func = std::move(func)](const ExprList &args) {
-                               checkArgCount(args.size(), 1);
-                               return func(args.front());
-                             });
+Expr makeBuiltinFunction<Expr>(const std::string &name, UnaryExprFunction<Expr> func) {
+  return makeBuiltinFunction(name, 1, [func = std::move(func)](const ExprList &args) {
+    checkArgCount(args.size(), 1);
+    return func(args.front());
+  });
 }
 
 namespace {
@@ -60,59 +58,50 @@ T applyBinaryFunction(const BinaryExprFunction<T> &func, const ExprList &args) {
 }
 
 template <typename T>
-T applyBinaryIntFunction(const BinaryIntFunction<T> &func,
-                         const ExprList &args) {
+T applyBinaryIntFunction(const BinaryIntFunction<T> &func, const ExprList &args) {
   return applyBinaryFunction<T>(
       [func = std::move(func)](const Expr &arg1, const Expr &arg2) {
         return func(intVal(arg1), intVal(arg2));
       },
       args);
 }
-} // namespace
+}  // namespace
 
 template <>
 Expr makeBuiltinFunction<std::int64_t>(const std::string &name,
                                        BinaryIntFunction<std::int64_t> func) {
-  return makeBuiltinFunction(
-      name, 2, [func = std::move(func)](const ExprList &args) {
-        return Int{applyBinaryIntFunction<std::int64_t>(func, args)};
-      });
+  return makeBuiltinFunction(name, 2, [func = std::move(func)](const ExprList &args) {
+    return Int{applyBinaryIntFunction<std::int64_t>(func, args)};
+  });
 }
 
 template <>
-Expr makeBuiltinFunction<bool>(const std::string &name,
-                               BinaryIntFunction<bool> func) {
-  return makeBuiltinFunction(
-      name, 2, [func = std::move(func)](const ExprList &args) {
-        return applyBinaryIntFunction<bool>(func, args) ? Bool::TRUE
-                                                        : Bool::FALSE;
-      });
+Expr makeBuiltinFunction<bool>(const std::string &name, BinaryIntFunction<bool> func) {
+  return makeBuiltinFunction(name, 2, [func = std::move(func)](const ExprList &args) {
+    return applyBinaryIntFunction<bool>(func, args) ? Bool::TRUE : Bool::FALSE;
+  });
 }
 
 template <>
-Expr makeBuiltinFunction<bool>(const std::string &name,
-                               BinaryExprFunction<bool> func) {
-  return makeBuiltinFunction(
-      name, 2, [func = std::move(func)](const ExprList &args) {
-        return applyBinaryFunction<bool>(func, args) ? Bool::TRUE : Bool::FALSE;
-      });
+Expr makeBuiltinFunction<bool>(const std::string &name, BinaryExprFunction<bool> func) {
+  return makeBuiltinFunction(name, 2, [func = std::move(func)](const ExprList &args) {
+    return applyBinaryFunction<bool>(func, args) ? Bool::TRUE : Bool::FALSE;
+  });
 }
 
 template <>
-Expr makeBuiltinFunction<Expr>(const std::string &name,
-                               BinaryExprFunction<Expr> func) {
-  return makeBuiltinFunction(name, 2,
-                             [func = std::move(func)](const ExprList &args) {
-                               return applyBinaryFunction<Expr>(func, args);
-                             });
+Expr makeBuiltinFunction<Expr>(const std::string &name, BinaryExprFunction<Expr> func) {
+  return makeBuiltinFunction(name, 2, [func = std::move(func)](const ExprList &args) {
+    return applyBinaryFunction<Expr>(func, args);
+  });
 }
 
-Expr makeBuiltinFunction(const std::string &name,
-                         VariadicIntFunction<std::int64_t> func) {
+Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction<std::int64_t> func) {
   auto exprFunc = [func = std::move(func)](const ExprList &args) {
-    return Int{func(immer::accumulate(
-        args, immer::vector<std::int64_t>{},
-        [](auto acc, const auto &arg) { return acc.push_back(intVal(arg)); }))};
+    return Int{
+        func(immer::accumulate(args, immer::vector<std::int64_t>{}, [](auto acc, const auto &arg) {
+          return acc.push_back(intVal(arg));
+        }))};
   };
 
   return makeBuiltinFunction(name, -1, exprFunc);
@@ -138,5 +127,4 @@ std::int64_t intVal(const Expr &expr) {
 }
 
 WrongTypeError::WrongTypeError(const std::string &expected, const Expr &actual)
-    : MALError("wrong type: expected " + expected +
-               ", got: " + prStr(actual, true)) {}
+    : MALError("wrong type: expected " + expected + ", got: " + prStr(actual, true)) {}

@@ -1,12 +1,13 @@
 #pragma once
 
-#include "errors.hpp"
 #include <cassert>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "errors.hpp"
 
 enum class TokenType {
   UNDEFINED,
@@ -30,16 +31,14 @@ enum class TokenType {
 const char *tokenTypeName(TokenType tokenType);
 
 class TokenizerError : public MALError {
-public:
-  explicit TokenizerError(const std::string &message)
-      : MALError("tokenizer error: " + message) {}
+ public:
+  explicit TokenizerError(const std::string &message) : MALError("tokenizer error: " + message) {}
 };
 
 struct Token {
   TokenType type;
   std::string lexeme;
-  Token(TokenType type, std::string lexeme)
-      : type(type), lexeme(std::move(lexeme)) {}
+  Token(TokenType type, std::string lexeme) : type(type), lexeme(std::move(lexeme)) {}
 
   [[nodiscard]] std::string toString() const {
     std::stringstream buffer;
@@ -47,29 +46,25 @@ struct Token {
     return buffer.str();
   }
 
-  bool operator==(const Token &other) const {
-    return type == other.type && lexeme == other.lexeme;
-  }
+  bool operator==(const Token &other) const { return type == other.type && lexeme == other.lexeme; }
 
-  bool operator!=(const Token &other) const {
-    return !(this->operator==(other));
-  }
+  bool operator!=(const Token &other) const { return !(this->operator==(other)); }
 };
 
 class Tokenizer {
-private:
+ private:
   std::string input;
   int position{0};
   std::vector<Token> tokens;
   TokenType prevTokenType{TokenType::UNDEFINED};
   std::string buffer;
 
-public:
+ public:
   explicit Tokenizer(std::string input) : input(std::move(input)){};
 
   std::vector<Token> tokenize();
 
-private:
+ private:
   void tokenizeWhitespace(char chr);
 
   void tokenizeSpecialChar(char chr);
@@ -98,32 +93,32 @@ private:
 
   static TokenType charTokenType(char chr) {
     switch (chr) {
-    case '~':
-      return TokenType::TILDE;
-    case '@':
-      return TokenType::AT;
-    case '[':
-      return TokenType::LEFT_BRACKET;
-    case ']':
-      return TokenType::RIGHT_BRACKET;
-    case '{':
-      return TokenType::LEFT_BRACE;
-    case '}':
-      return TokenType::RIGHT_BRACE;
-    case '(':
-      return TokenType::LEFT_PAREN;
-    case ')':
-      return TokenType::RIGHT_PAREN;
-    case '\'':
-      return TokenType::QUOTE;
-    case '`':
-      return TokenType::BACKQUOTE;
-    case '^':
-      return TokenType::CARET;
-    default:
-      std::string error("invalid character: ");
-      error += chr;
-      throw TokenizerError(error);
+      case '~':
+        return TokenType::TILDE;
+      case '@':
+        return TokenType::AT;
+      case '[':
+        return TokenType::LEFT_BRACKET;
+      case ']':
+        return TokenType::RIGHT_BRACKET;
+      case '{':
+        return TokenType::LEFT_BRACE;
+      case '}':
+        return TokenType::RIGHT_BRACE;
+      case '(':
+        return TokenType::LEFT_PAREN;
+      case ')':
+        return TokenType::RIGHT_PAREN;
+      case '\'':
+        return TokenType::QUOTE;
+      case '`':
+        return TokenType::BACKQUOTE;
+      case '^':
+        return TokenType::CARET;
+      default:
+        std::string error("invalid character: ");
+        error += chr;
+        throw TokenizerError(error);
     }
   }
 
