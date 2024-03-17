@@ -26,14 +26,23 @@
         # system.
 
         packages.default = pkgs.callPackage ./package.nix { stdenv = pkgs.clangStdenv; };
+        packages.minimal = pkgs.callPackage ./package.nix { };
 
-        devShells.default = let
-          mcc-env = (pkgs.callPackage mini-compile-commands { }).wrap pkgs.clangStdenv;
-          mccShell = pkgs.mkShell.override { stdenv = mcc-env; };
-        in mccShell {
-          nativeBuildInputs = self'.packages.default.nativeBuildInputs;
-          buildInputs = self'.packages.default.buildInputs;
-          packages = with pkgs; [ just clang-tools cppcheck flawfinder python3Minimal ];
+        devShells.default =
+          let
+            mcc-env = (pkgs.callPackage mini-compile-commands { }).wrap pkgs.clangStdenv;
+            mccShell = pkgs.mkShell.override { stdenv = mcc-env; };
+          in
+          mccShell {
+            nativeBuildInputs = self'.packages.default.nativeBuildInputs;
+            buildInputs = self'.packages.default.buildInputs;
+            packages = with pkgs; [ just clang-tools cppcheck flawfinder python3Minimal ];
+          };
+
+        devShells.minimal = pkgs.mkShell {
+          nativeBuildInputs = self'.packages.minimal.nativeBuildInputs;
+          buildInputs = self'.packages.minimal.buildInputs;
+          packages = with pkgs; [ just python3Minimal ];
         };
       };
       flake = {

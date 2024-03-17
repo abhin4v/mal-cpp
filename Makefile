@@ -1,2 +1,5 @@
 step%:
-	true
+	just build $@
+
+clean:
+	just clean
