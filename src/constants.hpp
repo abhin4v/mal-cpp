@@ -1,5 +1,9 @@
 #pragma once
 
+constexpr static auto NIL_SYM                   = "nil";
+constexpr static auto TRUE_SYM                  = "true";
+constexpr static auto FALSE_SYM                 = "false";
+
 constexpr static auto DEF_FORM_SYM              = "def!";
 constexpr static auto DEFMACRO_FORM_SYM         = "defmacro!";
 constexpr static auto LET_STAR_FORM_SYM         = "let*";

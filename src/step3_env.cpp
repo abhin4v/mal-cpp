@@ -27,12 +27,11 @@ int main() {
   linenoiseHistoryLoad(HISTORY_FILE);
   linenoiseHistorySetMaxLen(HISTORY_MAX_LEN);
 
-  Env replEnv(nullptr);
-  for (const auto &[name, func] : Core::ns()) {
-    replEnv.set(name, func);
-  }
+  const Env replEnv(nullptr);
+  auto replEnvPtr = std::make_shared<Env>(replEnv);
+  Core::install(replEnvPtr);
 
-  Evaluator evaluator(std::make_shared<Env>(replEnv));
+  Evaluator evaluator(replEnvPtr);
 
   while (true) {
     auto *line = linenoise("user> ");

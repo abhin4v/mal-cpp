@@ -57,7 +57,7 @@ class Evaluator {
 
   Expr operator()(const HashMap &hashmap) {
     ExprMap map;
-    for (const auto &[key, value] : hashmap.value) {
+    for (const auto &[key, value] : hashmap) {
       map = std::move(map).set(eval(key), eval(value));
     }
     return HashMap{map};
@@ -69,6 +69,42 @@ class Evaluator {
 
  private:
   EvalResult doEval(const Expr &expr);
+
+  EvalResult evalSpecialForm(const std::string &specialSymbol, const ExprList &args);
+
+  Expr evalDefBang(const ExprList &args);
+
+  Expr evalDefmacroBang(const ExprList &args);
+
+  EvalResult evalLetStar(const ExprList &args);
+
+  template <typename Container>
+  EvalResult doEvalLetStar(const Container &bindingList, const Expr &letBody);
+
+  EvalResult evalDo(const ExprList &args);
+
+  EvalResult evalIf(const ExprList &args);
+
+  Expr evalFnStar(const ExprList &args);
+
+  template <typename Container>
+  Expr doEvalFnStar(const Container &params, const Expr &body);
+
+  Expr macroexpand(const Expr &expr);
+
+  static Expr quasiquote(const Expr &expr);
+
+  static Expr quasiquoteList(const List &list);
+
+  Expr evalTryStar(const ExprList &args);
+
+  static EvalResult applyFunction(const Expr &callee, const ExprList &args);
+
+  std::optional<Box<Lambda>> findMacroFunc(const Expr &expr);
+
+  static std::pair<std::string, Expr> defineBinding(
+      const EnvPtr &env, const Expr &bindingNameExpr,
+      const std::function<Expr()> &makeBindingValueExpr);
 
   template <typename Container>
   Container evalElements(const Container &elements) {
@@ -88,42 +124,6 @@ class Evaluator {
     }
     return std::nullopt;
   }
-
-  EvalResult evalSpecialForm(const std::string &specialSymbol, const ExprList &elements);
-
-  Expr evalDefBang(const ExprList &elements);
-
-  Expr evalDefmacroBang(const ExprList &elements);
-
-  EvalResult evalLetStar(const ExprList &elements);
-
-  template <typename Container>
-  EvalResult doEvalLetStar(const Container &bindingList, const Expr &letBody);
-
-  EvalResult evalDo(const ExprList &elements);
-
-  EvalResult evalIf(const ExprList &elements);
-
-  Expr evalFnStar(const ExprList &elements);
-
-  template <typename Container>
-  Expr doEvalFnStar(const Container &params, const Expr &body);
-
-  Expr macroexpand(const Expr &expr);
-
-  static Expr quasiquote(const Expr &expr);
-
-  static Expr quasiquoteList(const List &list);
-
-  Expr evalTryStar(const ExprList &elements);
-
-  static EvalResult applyFunction(const Expr &callee, const ExprList &args);
-
-  std::optional<Box<Lambda>> findMacroFunc(const Expr &expr);
-
-  static std::pair<std::string, Expr> defineBinding(
-      const EnvPtr &env, const Expr &bindingNameExpr,
-      const std::function<Expr()> &makeBindingValueExpr);
 
   static void checkDupParamNames(const ParamNames &paramNames) {
     auto dupParamNames = findDuplicates(paramNames);

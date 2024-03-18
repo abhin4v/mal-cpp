@@ -18,16 +18,16 @@ class Equator {
     return func1->name == func2->name && func1->arity == func2->arity;
   }
   bool operator()(const Box<List> &list1, const Box<List> &list2) const {
-    return equateElements(list1->value, list2->value);
+    return equateElements(list1, list2);
   }
   bool operator()(const Box<List> &list, const Box<Vector> &vector) const {
-    return equateElements(list->value, vector->value);
+    return equateElements(list, vector);
   }
   bool operator()(const Box<Vector> &vector1, const Box<Vector> &vector2) const {
-    return equateElements(vector1->value, vector2->value);
+    return equateElements(vector1, vector2);
   }
   bool operator()(const Box<Vector> &vector, const Box<List> &list) const {
-    return equateElements(vector->value, list->value);
+    return equateElements(vector, list);
   }
   bool operator()(const Box<HashMap> &hm1, const Box<HashMap> &hm2) const {
     if (hm1->value.size() != hm2->value.size()) {
@@ -61,10 +61,10 @@ class Equator {
   template <typename Container1, typename Container2>
   [[nodiscard]] bool equateElements(const Container1 &elements,
                                     const Container2 &otherElements) const {
-    if (elements.size() != otherElements.size()) {
+    if (elements->size() != otherElements->size()) {
       return false;
     }
-    return std::equal(elements.begin(), elements.end(), otherElements.begin(),
+    return std::equal(elements->begin(), elements->end(), otherElements->begin(),
                       [&](auto expr1, auto expr2) { return equateExpr(expr1, expr2); });
   }
 };

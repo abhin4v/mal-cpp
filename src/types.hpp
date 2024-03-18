@@ -100,27 +100,6 @@ using ExprMap      = immer::map<Expr, Expr, ExprHash, ExprEquals>;
 
 using ExprFunction = std::function<Expr(const ExprList &)>;
 
-template <typename T, typename R>
-using UnaryFunction = std::function<R(const T &)>;
-
-template <typename T>
-using UnaryExprFunction = UnaryFunction<Expr, T>;
-
-template <typename T, typename R>
-using BinaryFunction = std::function<R(const T &, const T &)>;
-
-template <typename T>
-using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
-
-template <typename T>
-using BinaryExprFunction = BinaryFunction<Expr, T>;
-
-template <typename T, typename R>
-using VariadicFunction = std::function<R(const immer::vector<T> &)>;
-
-template <typename T>
-using VariadicIntFunction = VariadicFunction<std::int64_t, T>;
-
 struct BuiltinFunction {
   std::string name;
   int arity;
@@ -144,18 +123,36 @@ struct List {
   ExprList value{};
   Expr metadata = Nil::NIL;
   explicit List(ExprList value) : value(std::move(value)) {}
+
+  using iterator = ExprList::iterator;
+  [[nodiscard]] iterator begin() const { return value.begin(); }
+  [[nodiscard]] iterator end() const { return value.end(); }
+  [[nodiscard]] size_t size() const { return value.size(); }
+  [[nodiscard]] bool empty() const { return value.empty(); }
 };
 
 struct Vector {
   ExprVec value{};
   Expr metadata = Nil::NIL;
   explicit Vector(ExprVec value) : value(std::move(value)) {}
+
+  using iterator = ExprVec::iterator;
+  [[nodiscard]] iterator begin() const { return value.begin(); }
+  [[nodiscard]] iterator end() const { return value.end(); }
+  [[nodiscard]] size_t size() const { return value.size(); }
+  [[nodiscard]] bool empty() const { return value.empty(); }
 };
 
 struct HashMap {
   ExprMap value{};
   Expr metadata = Nil::NIL;
   explicit HashMap(ExprMap value) : value(std::move(value)) {}
+
+  using iterator = ExprMap::iterator;
+  [[nodiscard]] iterator begin() const { return value.begin(); }
+  [[nodiscard]] iterator end() const { return value.end(); }
+  [[nodiscard]] size_t size() const { return value.size(); }
+  [[nodiscard]] bool empty() const { return value.empty(); }
 };
 
 struct Atom {
@@ -163,23 +160,6 @@ struct Atom {
 };
 
 HashMap makeHashMap(const ExprList &elements);
-
-Expr makeBuiltinFunction(std::string name, int arity, ExprFunction func);
-
-template <typename T>
-Expr makeBuiltinFunction(const std::string &name, UnaryExprFunction<T> func);
-
-template <typename T>
-Expr makeBuiltinFunction(const std::string &name, BinaryIntFunction<T> func);
-
-template <typename T>
-Expr makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
-
-Expr makeBuiltinFunction(const std::string &name, VariadicIntFunction<std::int64_t> func);
-
-void checkArgCount(size_t argCount, size_t expected);
-void checkMinArgCount(size_t argCount, size_t expected);
-std::int64_t intVal(const Expr &expr);
 
 class WrongTypeError : public MALError {
  public:
@@ -192,3 +172,42 @@ class WrongArgCountError : public MALError {
       : MALError("wrong argument count: expected " + expected +
                  " arguments, got: " + std::to_string(actual)) {}
 };
+
+template <typename T, typename R>
+using UnaryFunction = std::function<R(const T &)>;
+
+template <typename T>
+using UnaryExprFunction = UnaryFunction<Expr, T>;
+
+template <typename T, typename R>
+using BinaryFunction = std::function<R(const T &, const T &)>;
+
+template <typename T>
+using BinaryIntFunction = BinaryFunction<std::int64_t, T>;
+
+template <typename T>
+using BinaryExprFunction = BinaryFunction<Expr, T>;
+
+template <typename T, typename R>
+using VariadicFunction = std::function<R(const immer::vector<T> &)>;
+
+template <typename T>
+using VariadicIntFunction = VariadicFunction<std::int64_t, T>;
+
+BuiltinFunction makeBuiltinFunction(std::string name, int arity, ExprFunction func);
+
+template <typename T>
+BuiltinFunction makeBuiltinFunction(const std::string &name, UnaryExprFunction<T> func);
+
+template <typename T>
+BuiltinFunction makeBuiltinFunction(const std::string &name, BinaryIntFunction<T> func);
+
+template <typename T>
+BuiltinFunction makeBuiltinFunction(const std::string &name, BinaryExprFunction<T> func);
+
+BuiltinFunction makeBuiltinFunction(const std::string &name,
+                                    VariadicIntFunction<std::int64_t> func);
+
+void checkArgCount(size_t argCount, size_t expected);
+void checkMinArgCount(size_t argCount, size_t expected);
+std::int64_t intVal(const Expr &expr);

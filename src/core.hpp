@@ -7,7 +7,6 @@
 #include <numeric>
 #include <sstream>
 #include <string>
-#include <unordered_map>
 #include <variant>
 
 #include "constants.hpp"
@@ -17,19 +16,36 @@
 #include "reader.hpp"
 #include "types.hpp"
 
-using Builtins = std::unordered_map<std::string, Expr>;
-
 class Core {
- private:
-  static Builtins makeBuiltins() noexcept;
+ public:
+  static constexpr auto NOT_FUNC = "(def! not (fn* (a) (if a false true)))";
+  static constexpr auto LOAD_FILE_FUNC =
+      R"((def! load-file
+                  (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))";
+  static constexpr auto COND_MACRO =
+      R"((defmacro! cond
+                  (fn* (& xs)
+                    (if (> (count xs) 0)
+                      (list
+                        'if
+                        (first xs)
+                        (if (> (count xs) 1)
+                          (nth xs 1)
+                          (throw "odd number of forms to cond"))
+                        (cons 'cond (rest (rest xs))))))))";
 
-  static void makeArithmeticFunctions(Builtins &builtins);
-  static void makeStringFunctions(Builtins &builtins);
-  static void makePrintFunctions(Builtins &builtins);
-  static void makeCollectionFunctions(Builtins &builtins);
-  static void makeReadFunctions(Builtins &builtins);
-  static void makeAtomFunctions(Builtins &builtins);
-  static void makeTypePredicateFunctions(Builtins &builtins);
+  static void install(const EnvPtr &env);
+  static Expr makeWithMetaFunction(const EnvPtr &env);
+  static Expr makeSwapBangFunction(std::function<Expr(const Expr &)> eval);
+
+ private:
+  static void installArithmeticFunctions(const EnvPtr &env);
+  static void installStringFunctions(const EnvPtr &env);
+  static void installPrintFunctions(const EnvPtr &env);
+  static void installCollectionFunctions(const EnvPtr &env);
+  static void installReadFunctions(const EnvPtr &env);
+  static void installAtomFunctions(const EnvPtr &env);
+  static void installTypePredicateFunctions(const EnvPtr &env);
 
   static Expr readline(const String &str);
   static Expr apply(const ExprList &args);
@@ -47,6 +63,11 @@ class Core {
   static Expr keys(const Box<HashMap> &hashmap);
   static Expr vals(const Box<HashMap> &hashmap);
   static Expr meta(const Expr &arg);
+
+  static void installFunc(const EnvPtr &env, BuiltinFunction func) {
+    auto name = func.name;
+    env->set(name, std::move(func));
+  }
 
   static std::string toString(const ExprList &args, bool printReadably,
                               const std::string &separator) {
@@ -67,28 +88,4 @@ class Core {
                      std::to_string(elementCount));
     }
   }
-
-  const inline static Builtins builtins = makeBuiltins();
-
- public:
-  static Builtins ns() { return builtins; }
-
-  static Expr makeWithMetaFunction(const EnvPtr &env);
-  static Expr makeSwapBangFunction(std::function<Expr(const Expr &)> eval);
-
-  static constexpr auto NOT_FUNC = "(def! not (fn* (a) (if a false true)))";
-  static constexpr auto LOAD_FILE_FUNC =
-      R"((def! load-file
-                  (fn* (f) (trampolining-eval (read-string (str "(do " (slurp f) "\nnil) "))))))";
-  static constexpr auto COND_MACRO =
-      R"((defmacro! cond
-                  (fn* (& xs)
-                    (if (> (count xs) 0)
-                      (list
-                        'if
-                        (first xs)
-                        (if (> (count xs) 1)
-                          (nth xs 1)
-                          (throw "odd number of forms to cond"))
-                        (cons 'cond (rest (rest xs))))))))";
 };

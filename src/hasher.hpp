@@ -10,31 +10,16 @@
 class Hasher {
  public:
   size_t operator()(const Nil & /*nil1*/) const { return 0; }
-  size_t operator()(const Int &num) const {
-    const std::hash<std::int64_t> hasher;
-    return hasher(num.value);
-  }
-  size_t operator()(const Bool &boolean) const {
-    const std::hash<bool> hasher;
-    return hasher(boolean == Bool::TRUE);
-  }
-  size_t operator()(const String &str) const {
-    const std::hash<std::string> hasher;
-    return hasher(str.value);
-  }
-  size_t operator()(const Keyword &kwd) const {
-    const std::hash<std::string> hasher;
-    return hasher(kwd.value);
-  }
-  size_t operator()(const Symbol &sym) const {
-    const std::hash<std::string> hasher;
-    return hasher(sym.value);
-  }
+  size_t operator()(const Int &num) const { return std::hash<std::int64_t>()(num.value); }
+  size_t operator()(const Bool &boolean) const { return std::hash<bool>()(boolean == Bool::TRUE); }
+  size_t operator()(const String &str) const { return std::hash<std::string>()(str.value); }
+  size_t operator()(const Keyword &kwd) const { return std::hash<std::string>()(kwd.value); }
+  size_t operator()(const Symbol &sym) const { return std::hash<std::string>()(sym.value); }
+  size_t operator()(const Atom &atom) const { return hashExpr(atom.value); }
+
   size_t operator()(const BuiltinFunction &func) const {
-    const std::hash<std::string> strHasher;
-    auto hash1 = strHasher(func.name);
-    const std::hash<int> intHasher;
-    auto hash2 = intHasher(func.arity);
+    auto hash1 = std::hash<std::string>()(func.name);
+    auto hash2 = std::hash<int>()(func.arity);
     return hash1 ^ (hash2 << 1U);
   }
   size_t operator()(const Lambda &func) const {
@@ -47,21 +32,19 @@ class Hasher {
     return hash ^ (bodyHash << 1U);
   }
 
-  size_t operator()(const Atom &atom) const { return hashExpr(atom.value); }
-
   size_t operator()(const List &list) const {
-    return std::accumulate(
-        list.value.begin(), list.value.end(), 0,
-        [&](size_t hash, const auto &element) { return hash ^ (hashExpr(element) << 1U); });
+    return std::accumulate(list.begin(), list.end(), 0, [&](size_t hash, const auto &element) {
+      return hash ^ (hashExpr(element) << 1U);
+    });
   }
   size_t operator()(const Vector &vector) const {
-    return std::accumulate(
-        vector.value.begin(), vector.value.end(), 0,
-        [&](size_t hash, const auto &element) { return hash ^ (hashExpr(element) << 1U); });
+    return std::accumulate(vector.begin(), vector.end(), 0, [&](size_t hash, const auto &element) {
+      return hash ^ (hashExpr(element) << 1U);
+    });
   }
   size_t operator()(const HashMap &hashmap) const {
     size_t hash{0};
-    for (const auto &[key, value] : hashmap.value) {
+    for (const auto &[key, value] : hashmap) {
       hash = hash ^ (hashExpr(key) << 1U);
       hash = hash ^ (hashExpr(value) << 1U);
     }

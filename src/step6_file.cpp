@@ -31,9 +31,7 @@ std::string trampoliningREP(Evaluator &evaluator, const std::string &input) {
 }
 
 void setupEnv(const EnvPtr &env, Evaluator &evaluator, const std::vector<std::string> &args) {
-  for (const auto &[name, func] : Core::ns()) {
-    env->set(name, func);
-  }
+  Core::install(env);
 
   env->set("eval", makeBuiltinFunction<Expr>(
                        "eval", [&](const Expr &ast) { return EVAL(evaluator, ast); }));

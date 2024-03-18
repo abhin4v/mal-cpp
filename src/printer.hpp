@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "constants.hpp"
 #include "types.hpp"
 
 class Printer {
@@ -14,16 +15,16 @@ class Printer {
  public:
   explicit Printer(bool printReadably) : printReadably(printReadably) {}
 
-  std::string operator()(const Nil & /*nil*/) const { return "nil"; }
+  std::string operator()(const Nil & /*nil*/) const { return NIL_SYM; }
 
   std::string operator()(const Int &num) const { return std::to_string(num.value); }
 
   std::string operator()(const Bool &boolean) const {
     switch (boolean) {
       case Bool::TRUE:
-        return "true";
+        return TRUE_SYM;
       default:
-        return "false";
+        return FALSE_SYM;
     }
   }
 
@@ -35,12 +36,12 @@ class Printer {
 
   std::string operator()(const Keyword &kwd) const { return ':' + kwd.value; }
 
-  std::string operator()(const List &list) const { return prListLike(list.value, '(', ')'); }
+  std::string operator()(const List &list) const { return prListLike(list, '(', ')'); }
 
-  std::string operator()(const Vector &vector) const { return prListLike(vector.value, '[', ']'); }
+  std::string operator()(const Vector &vector) const { return prListLike(vector, '[', ']'); }
 
   std::string operator()(const HashMap &hashmap) const {
-    return prListLike(flattenKeyValuePairs({hashmap.value.begin(), hashmap.value.end()}), '{', '}');
+    return prListLike(flattenKeyValuePairs({hashmap.begin(), hashmap.end()}), '{', '}');
   }
 
   std::string operator()(const Atom &expr) const { return "(atom " + prExpr(expr.value) + ")"; }

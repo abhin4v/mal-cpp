@@ -50,7 +50,7 @@ EvalResult Evaluator::doEval(const Expr &expr) {
 
   auto firstSym           = firstSymbolOfList(expandedExpr);
   if (firstSym.has_value() && SPECIAL_FORM_SYMBOLS.contains(*firstSym)) {
-    return evalSpecialForm(*firstSym, std::get<Box<List>>(expandedExpr)->value);
+    return evalSpecialForm(*firstSym, std::get<Box<List>>(expandedExpr)->value.drop(1));
   }
 
   auto evaluatedExpr = std::visit(*this, expandedExpr);
@@ -63,57 +63,59 @@ EvalResult Evaluator::doEval(const Expr &expr) {
   return EvalResult{true, nullptr, evaluatedExpr};
 }
 
-EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol, const ExprList &elements) {
+EvalResult Evaluator::evalSpecialForm(const std::string &specialSymbol, const ExprList &args) {
   if (specialSymbol == DEF_FORM_SYM) {
-    return EvalResult{true, nullptr, evalDefBang(elements)};
+    return EvalResult{true, nullptr, evalDefBang(args)};
   }
   if (specialSymbol == DEFMACRO_FORM_SYM) {
-    return EvalResult{true, nullptr, evalDefmacroBang(elements)};
+    return EvalResult{true, nullptr, evalDefmacroBang(args)};
   }
   if (specialSymbol == LET_STAR_FORM_SYM) {
-    return evalLetStar(elements);
+    return evalLetStar(args);
   }
   if (specialSymbol == DO_FORM_SYM) {
-    return evalDo(elements);
+    return evalDo(args);
   }
   if (specialSymbol == IF_FORM_SYM) {
-    return evalIf(elements);
+    return evalIf(args);
   }
   if (specialSymbol == FN_STAR_FORM_SYM) {
-    return EvalResult{true, nullptr, evalFnStar(elements)};
+    return EvalResult{true, nullptr, evalFnStar(args)};
   }
   if (specialSymbol == QUOTE_FORM_SYM) {
-    return EvalResult{true, nullptr, elements.at(1)};
+    checkArgCount(args.size(), 1);
+    return EvalResult{true, nullptr, args.front()};
   }
   if (specialSymbol == QUASIQUOTEEXPAND_FORM_SYM) {
-    return EvalResult{true, nullptr, quasiquote(elements.at(1))};
+    checkArgCount(args.size(), 1);
+    return EvalResult{true, nullptr, quasiquote(args.front())};
   }
   if (specialSymbol == QUASIQUOTE_FORM_SYM) {
-    return EvalResult{false, nullptr, quasiquote(elements.at(1))};
+    checkArgCount(args.size(), 1);
+    return EvalResult{false, nullptr, quasiquote(args.front())};
   }
   if (specialSymbol == MACROEXPAND_FORM_SYM) {
-    checkArgCount(elements.size() - 1, 1);
-    return EvalResult{true, nullptr, macroexpand(elements.at(1))};
+    checkArgCount(args.size(), 1);
+    return EvalResult{true, nullptr, macroexpand(args.front())};
   }
   if (specialSymbol == TRY_STAR_FORM_SYM) {
-    checkMinArgCount(elements.size() - 1, 1);
-    return EvalResult{true, nullptr, evalTryStar(elements)};
+    checkMinArgCount(args.size(), 1);
+    return EvalResult{true, nullptr, evalTryStar(args)};
   }
 
   throw WrongTypeError("a special symbol", Symbol{specialSymbol});
 }
 
-Expr Evaluator::evalDefBang(const ExprList &elements) {
-  checkArgCount(elements.size() - 1, 2);
-  return std::get<1>(
-      defineBinding(env, elements.at(1), [&]() { return this->eval(elements.back()); }));
+Expr Evaluator::evalDefBang(const ExprList &args) {
+  checkArgCount(args.size(), 2);
+  return std::get<1>(defineBinding(env, args.front(), [&]() { return this->eval(args.back()); }));
 }
 
-Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
-  checkArgCount(elements.size() - 1, 2);
-  const auto &bindingValueExpr = elements.back();
+Expr Evaluator::evalDefmacroBang(const ExprList &args) {
+  checkArgCount(args.size(), 2);
+  const auto &bindingValueExpr = args.back();
 
-  return std::get<1>(defineBinding(env, elements.at(1), [&]() {
+  return std::get<1>(defineBinding(env, args.front(), [&]() {
     auto bindingValue = this->eval(bindingValueExpr);
 
     if (const auto *lambda = std::get_if<Box<Lambda>>(&bindingValue)) {
@@ -131,15 +133,15 @@ Expr Evaluator::evalDefmacroBang(const ExprList &elements) {
   }));
 }
 
-EvalResult Evaluator::evalLetStar(const ExprList &elements) {
-  checkArgCount(elements.size() - 1, 2);
+EvalResult Evaluator::evalLetStar(const ExprList &args) {
+  checkArgCount(args.size(), 2);
 
-  const auto &bindingsList = elements.at(1);
+  const auto &bindingsList = args.front();
   if (const auto *bindingList = std::get_if<Box<List>>(&bindingsList)) {
-    return doEvalLetStar((*bindingList)->value, elements.back());
+    return doEvalLetStar((*bindingList)->value, args.back());
   }
   if (const auto *bindingList = std::get_if<Box<Vector>>(&bindingsList)) {
-    return doEvalLetStar((*bindingList)->value, elements.back());
+    return doEvalLetStar((*bindingList)->value, args.back());
   }
   throw WrongTypeError("a list or vector", bindingsList);
 }
@@ -199,48 +201,48 @@ std::pair<std::string, Expr> Evaluator::defineBinding(
   throw WrongTypeError("a symbol", bindingNameExpr);
 }
 
-EvalResult Evaluator::evalDo(const ExprList &elements) {
-  const auto elementCount = elements.size();
-  if (elementCount == 1) {
+EvalResult Evaluator::evalDo(const ExprList &args) {
+  const auto argCount = args.size();
+  if (argCount == 0) {
     return EvalResult{true, env, Nil::NIL};
   }
 
-  const auto doElements = elements.take(elementCount - 1).drop(1);
-  // skip first and last element
-  for (const auto &element : doElements) {
-    eval(element);
+  const auto doArgs = args.take(argCount - 1);
+  // skip first and last arg
+  for (const auto &arg : doArgs) {
+    eval(arg);
   }
 
-  return EvalResult{false, nullptr, elements.back()};
+  return EvalResult{false, nullptr, args.back()};
 }
 
-EvalResult Evaluator::evalIf(const ExprList &elements) {
-  auto argCount = elements.size() - 1;
+EvalResult Evaluator::evalIf(const ExprList &args) {
+  auto argCount = args.size();
   if (argCount != 2 && argCount != 3) {
     throw WrongArgCountError("two or three", argCount);
   }
 
-  auto evaluatedCond = eval(elements.at(1));
+  auto evaluatedCond = eval(args.front());
   if (const auto *cond = std::get_if<Bool>(&evaluatedCond)) {
     if (*cond == Bool::FALSE) {
-      return EvalResult{argCount == 2, nullptr, argCount == 3 ? elements.back() : Nil::NIL};
+      return EvalResult{argCount == 2, nullptr, argCount == 3 ? args.back() : Nil::NIL};
     }
   }
   if (std::holds_alternative<Nil>(evaluatedCond)) {
-    return EvalResult{argCount == 2, nullptr, argCount == 3 ? elements.back() : Nil::NIL};
+    return EvalResult{argCount == 2, nullptr, argCount == 3 ? args.back() : Nil::NIL};
   }
-  return EvalResult{false, nullptr, elements.at(2)};
+  return EvalResult{false, nullptr, args.at(1)};
 }
 
-Expr Evaluator::evalFnStar(const ExprList &elements) {
-  checkArgCount(elements.size() - 1, 2);
+Expr Evaluator::evalFnStar(const ExprList &args) {
+  checkArgCount(args.size(), 2);
 
-  const auto &mParams = elements.at(1);
+  const auto &mParams = args.front();
   if (const auto *params = std::get_if<Box<List>>(&mParams)) {
-    return doEvalFnStar((*params)->value, elements.back());
+    return doEvalFnStar((*params).getRaw(), args.back());
   }
   if (const auto *params = std::get_if<Box<Vector>>(&mParams)) {
-    return doEvalFnStar((*params)->value, elements.back());
+    return doEvalFnStar((*params).getRaw(), args.back());
   }
 
   throw WrongTypeError("a list or vector", mParams);
@@ -280,14 +282,14 @@ Expr Evaluator::doEvalFnStar(const Container &params, const Expr &body) {
                 .env      = std::make_shared<Env>(Env(env))};
 }
 
-Expr Evaluator::evalTryStar(const ExprList &elements) {
-  const Expr &expr = elements.at(1);
-  if (elements.size() == 2) {
+Expr Evaluator::evalTryStar(const ExprList &args) {
+  const Expr &expr = args.front();
+  if (args.size() == 1) {
     return eval(expr);
   }
 
-  checkArgCount(elements.size() - 1, 2);
-  const auto &catchExpr = elements.at(2);
+  checkArgCount(args.size(), 2);
+  const auto &catchExpr = args.at(1);
   auto firstSym         = firstSymbolOfList(catchExpr);
   if (!firstSym.has_value() || firstSym.value() != CATCH_STAR_FORM_SYM) {
     throw MALError("try* must contain catch* form, got: " + Printer::prStr(catchExpr, true));

@@ -112,9 +112,6 @@ ExprList Reader::readList(const Token &startDelimToken, TokenType endDelimTokenT
   }
 }
 
-static const auto NIL_LEXEME    = "nil";
-static const auto TRUE_LEXEME   = "true";
-static const auto FALSE_LEXEME  = "false";
 static const auto KEYWORD_SIGIL = ':';
 
 Expr Reader::readAtom() {
@@ -132,13 +129,13 @@ Expr Reader::readAtom() {
         auto num = parseUnsignedInteger(lexeme.substr(1));
         return Int{-num};
       }
-      if (lexeme == NIL_LEXEME) {
+      if (lexeme == NIL_SYM) {
         return Nil::NIL;
       }
-      if (lexeme == TRUE_LEXEME) {
+      if (lexeme == TRUE_SYM) {
         return Bool::TRUE;
       }
-      if (lexeme == FALSE_LEXEME) {
+      if (lexeme == FALSE_SYM) {
         return Bool::FALSE;
       }
       if (chr == KEYWORD_SIGIL) {
