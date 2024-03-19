@@ -45,24 +45,8 @@ gen-mini-compile-commands:
   just build all
   kill -s SIGINT $pid
 
-[macos]
-@_fixup target:
-  #!/usr/bin/env bash
-  TARGET="{{target}}"
-  if [ "$TARGET" = "all" ]; then
-    find {{BUILD_DIR}} -maxdepth 1 -name 'step*' -type f -print | cut -d '/' -f 2 | xargs -I {} just --quiet _fixup "{}"
-  elif [[ ${TARGET:0:4} == "step" ]]; then
-    LINENOISE_LIB_PATH=`pkg-config --libs-only-L linenoise | cut -c 3-`
-    install_name_tool -change liblinenoise.so "${LINENOISE_LIB_PATH}/liblinenoise.so" {{BUILD_DIR}}/$TARGET
-  fi
-
-[linux]
-@_fixup target:
-  true
-
 _build build-type target *flags: (configure build-type)
   cmake --build {{BUILD_DIR}} --target {{target}} {{flags}} --parallel
-  just --quiet _fixup {{target}}
 
 # builds a target
 build target *flags: (_run-in-nix-shell "_build" "Debug" target flags)
